@@ -1,7 +1,21 @@
 """OMR Service Configuration."""
 
-from pydantic_settings import BaseSettings
+import os
+from pathlib import Path
 from typing import Optional
+
+import torch
+from pydantic_settings import BaseSettings
+
+
+def _detect_device() -> str:
+    """Detect available device with MPS priority for Apple Silicon."""
+    if torch.backends.mps.is_available():
+        return "mps"
+    elif torch.cuda.is_available():
+        return "cuda"
+    else:
+        return "cpu"
 
 
 class Settings(BaseSettings):
@@ -14,10 +28,14 @@ class Settings(BaseSettings):
     # Model configuration
     model_name: str = "Polyphonic-TrOMR"
     model_version: str = "1.0.0"
-    model_path: str = "/app/models/polyphonic_tromr_weights.pt"
+    
+    # Polyphonic-TrOMR paths (relative to service root)
+    tromr_base_path: str = "Polyphonic-TrOMR"
+    tromr_config_path: str = "Polyphonic-TrOMR/tromr/workspace/config.yaml"
+    tromr_checkpoint_path: str = "Polyphonic-TrOMR/tromr/workspace/checkpoints/img2score_epoch47.pth"
 
-    # Device configuration
-    device: str = "cuda"  # "cuda" or "cpu"
+    # Device configuration - auto-detect with MPS priority
+    device: str = _detect_device()
     use_gpu: bool = True
 
     # Processing configuration
@@ -28,6 +46,7 @@ class Settings(BaseSettings):
     # Inference configuration
     batch_size: int = 1
     confidence_threshold: float = 0.5  # Minimum confidence for detections
+    temperature: float = 0.2  # Temperature for model generation
 
     # Performance
     max_workers: int = 2  # Number of concurrent OMR jobs
@@ -39,6 +58,21 @@ class Settings(BaseSettings):
 
     # Logging
     log_level: str = "INFO"
+
+    def get_tromr_config_path(self) -> Path:
+        """Get absolute path to TrOMR config file."""
+        base = Path(__file__).parent.parent.parent
+        return base / self.tromr_config_path
+
+    def get_tromr_checkpoint_path(self) -> Path:
+        """Get absolute path to TrOMR checkpoint file."""
+        base = Path(__file__).parent.parent.parent
+        return base / self.tromr_checkpoint_path
+
+    def get_tromr_base_path(self) -> Path:
+        """Get absolute path to TrOMR base directory."""
+        base = Path(__file__).parent.parent.parent
+        return base / self.tromr_base_path
 
     class Config:
         env_prefix = "OMR_"

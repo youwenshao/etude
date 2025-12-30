@@ -22,15 +22,20 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Copy Polyphonic-TrOMR repository
+COPY Polyphonic-TrOMR/ ./Polyphonic-TrOMR/
+
+# Set PYTHONPATH to include Polyphonic-TrOMR
+ENV PYTHONPATH=/app/Polyphonic-TrOMR:$PYTHONPATH
+
 # Copy application code
 COPY app/ ./app/
 
 # Create directory for model weights
 RUN mkdir -p /app/models
 
-# Download or copy pretrained OMR model weights
-# This should be done during build or at runtime
-# COPY models/polyphonic_tromr_weights.pt /app/models/
+# Note: Model weights should be available in Polyphonic-TrOMR/tromr/workspace/checkpoints/
+# or mounted as a volume at runtime
 
 # Expose API port
 EXPOSE 8001

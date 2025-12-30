@@ -307,11 +307,18 @@ class OMRToIRAdapter:
         measure = measure_offset + int(onset_beats // beats_per_measure)
         beat_in_measure = onset_beats % beats_per_measure
 
+        # Use Fraction objects for precise representation
+        from fractions import Fraction as Frac
+
+        # Convert to Fraction for beat_fraction
+        beat_fraction = Frac.from_float(beat_in_measure).limit_denominator(32)
+        duration_fraction = Frac.from_float(duration_beats).limit_denominator(32)
+
         time = {
             "onset_seconds": onset_seconds,
             "measure": measure,
             "beat": beat_in_measure,
-            "beat_fraction": f"{int(beat_in_measure * 1000)}/1000",
+            "beat_fraction": f"{beat_fraction.numerator}/{beat_fraction.denominator}",
             "absolute_beat": onset_beats,
             "quantization_confidence": omr_note.get("confidence", 0.8),
         }
@@ -319,7 +326,7 @@ class OMRToIRAdapter:
         duration = {
             "duration_seconds": duration_seconds,
             "duration_beats": duration_beats,
-            "duration_fraction": f"{int(duration_beats * 1000)}/1000",
+            "duration_fraction": f"{duration_fraction.numerator}/{duration_fraction.denominator}",
             "note_type": self._infer_note_type(duration_beats),
             "dots": 0,
             "is_tuplet": False,
