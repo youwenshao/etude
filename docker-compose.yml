@@ -77,6 +77,7 @@ services:
       - CORS_ORIGINS=${CORS_ORIGINS}
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - OMR_SERVICE_URL=${OMR_SERVICE_URL:-http://omr:8001}
     depends_on:
       postgres:
         condition: service_healthy
@@ -88,10 +89,40 @@ services:
       - etude_network
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
 
+  omr:
+    build:
+      context: ./services/omr
+      dockerfile: Dockerfile
+    container_name: etude_omr
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./services/omr:/app
+      - omr_models:/app/models
+    environment:
+      - OMR_MODEL_PATH=${OMR_MODEL_PATH:-/app/models/polyphonic_tromr_weights.pt}
+      - OMR_DEVICE=${OMR_DEVICE:-cpu}
+      - OMR_USE_GPU=${OMR_USE_GPU:-false}
+      - OMR_MAX_PDF_PAGES=${OMR_MAX_PDF_PAGES:-50}
+      - OMR_MAX_FILE_SIZE_MB=${OMR_MAX_FILE_SIZE_MB:-50}
+      - OMR_PDF_DPI=${OMR_PDF_DPI:-300}
+      - OMR_CONFIDENCE_THRESHOLD=${OMR_CONFIDENCE_THRESHOLD:-0.5}
+      - OMR_LOG_LEVEL=${OMR_LOG_LEVEL:-INFO}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+    networks:
+      - etude_network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001
+
 volumes:
   postgres_data:
   minio_data:
   redis_data:
+  omr_models:
 
 networks:
   etude_network:

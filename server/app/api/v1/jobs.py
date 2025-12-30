@@ -3,13 +3,14 @@
 from typing import Annotated, Optional
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query, UploadFile, File
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, status, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.models.user import User
 from app.schemas.job import JobCreate, JobResponse, JobListResponse
 from app.services.job_service import JobService
+from app.services.omr_processor import process_omr_job
 from app.dependencies import get_current_active_user
 
 router = APIRouter()
@@ -19,6 +20,7 @@ router = APIRouter()
 async def create_job(
     current_user: Annotated[User, Depends(get_current_active_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    background_tasks: BackgroundTasks,
     file: UploadFile = File(..., description="PDF file to process"),
 ) -> JobResponse:
     """
@@ -27,6 +29,7 @@ async def create_job(
     - **file**: PDF file to process (multipart/form-data)
 
     Returns created job with status PENDING.
+    OMR processing will start automatically in the background.
     """
     # Validate file type
     if not file.filename or not file.filename.lower().endswith(".pdf"):
@@ -46,6 +49,9 @@ async def create_job(
     job = await job_service.create_job(
         user_id=current_user.id, pdf_file=pdf_content, filename=file.filename or "upload.pdf"
     )
+
+    # Trigger background OMR processing
+    background_tasks.add_task(process_omr_job, job.id, db)
 
     return JobResponse.model_validate(job)
 

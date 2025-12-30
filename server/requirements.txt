@@ -30,6 +30,9 @@ httpx>=0.25.0
 pytest-cov>=4.1.0
 aiosqlite>=0.19.0
 
+# OMR Service Client
+tenacity>=8.2.3
+
 # Redis
 redis[hiredis]>=5.0.0
 

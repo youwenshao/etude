@@ -63,6 +63,12 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     LOG_LEVEL: str = "INFO"
 
+    # OMR Service
+    OMR_SERVICE_URL: str = Field(
+        default="http://omr:8001",
+        description="Base URL for OMR service",
+    )
+
     @property
     def is_development(self) -> bool:
         """Check if running in development mode."""

@@ -1,0 +1,21 @@
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+pydantic==2.5.0
+pydantic-settings==2.1.0
+torch==2.1.0
+torchvision==0.16.0
+opencv-python-headless==4.8.1.78
+pillow==10.1.0
+numpy==1.24.3
+pdf2image==1.16.3
+python-multipart==0.0.6
+httpx==0.25.2
+tenacity==8.2.3
+
+# OMR-specific dependencies (adjust based on actual model)
+# music21==9.1.0  # If needed for MusicXML parsing
+# onnxruntime==1.16.3  # If using ONNX format
+
+# Optional: GPU support
+# torch==2.1.0+cu118 --extra-index-url https://download.pytorch.org/whl/cu118
+
