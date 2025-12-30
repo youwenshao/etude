@@ -53,3 +53,11 @@ async def get_current_active_user(
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Inactive user")
     return current_user
 
+
+async def get_ir_service(
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> "IRService":
+    """Get IR service instance."""
+    from app.services.ir_service import IRService
+    return IRService(db)
+

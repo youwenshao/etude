@@ -1,0 +1,111 @@
+{
+  "version": "1.0.0",
+  "schema_type": "symbolic_score_ir",
+  "metadata": {
+    "title": "Minimal Test Piece",
+    "composer": "Test Composer",
+    "source_pdf_artifact_id": "00000000-0000-0000-0000-000000000000",
+    "generated_by": {
+      "service": "omr-service",
+      "model": "Test-Model",
+      "model_version": "1.0.0",
+      "timestamp": "2025-01-15T10:30:00Z"
+    },
+    "page_count": 1,
+    "note_count": 1,
+    "chord_count": 0,
+    "voice_count": 1,
+    "average_detection_confidence": 0.95
+  },
+  "time_signature": {
+    "numerator": 4,
+    "denominator": 4,
+    "changes": []
+  },
+  "key_signature": {
+    "fifths": 0,
+    "mode": "major"
+  },
+  "tempo": {
+    "bpm": 120,
+    "beat_unit": "quarter",
+    "changes": []
+  },
+  "staves": [
+    {
+      "staff_id": "staff_0",
+      "clef": "treble",
+      "part_name": "Piano Right Hand"
+    }
+  ],
+  "notes": [
+    {
+      "note_id": "note_0",
+      "pitch": {
+        "midi_note": 60,
+        "pitch_class": "C",
+        "octave": 4,
+        "scientific_notation": "C4",
+        "frequency_hz": 261.63,
+        "accidental": null
+      },
+      "time": {
+        "onset_seconds": 0.0,
+        "measure": 1,
+        "beat": 0.0,
+        "beat_fraction": "0/1",
+        "absolute_beat": 0.0,
+        "quantization_confidence": 0.95
+      },
+      "duration": {
+        "duration_seconds": 0.5,
+        "duration_beats": 1.0,
+        "duration_fraction": "1/1",
+        "note_type": "quarter",
+        "dots": 0,
+        "is_tuplet": false,
+        "tuplet_ratio": null
+      },
+      "spatial": {
+        "staff_id": "staff_0",
+        "staff_position": 0.0,
+        "page_number": 1,
+        "bounding_box": {
+          "x": 0.1,
+          "y": 0.5,
+          "width": 0.05,
+          "height": 0.1,
+          "coordinate_system": "normalized"
+        },
+        "staff_assignment_confidence": 0.95
+      },
+      "articulation": null,
+      "dynamics": null,
+      "chord_membership": null,
+      "voice_assignment": null,
+      "hand_assignment": null,
+      "is_grace_note": false,
+      "is_tied_from_previous": false,
+      "is_tied_to_next": false,
+      "confidence": {
+        "detection": 0.95,
+        "pitch": 0.95,
+        "onset_time": 0.95,
+        "duration": 0.95,
+        "voice": 0.9,
+        "hand": 0.9,
+        "chord_membership": 1.0,
+        "overall": 0.94
+      }
+    }
+  ],
+  "chords": [],
+  "voices": [
+    {
+      "voice_id": "voice_0",
+      "staff_id": "staff_0",
+      "note_ids": ["note_0"]
+    }
+  ]
+}
+

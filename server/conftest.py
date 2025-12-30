@@ -78,3 +78,32 @@ async def client(db_session: AsyncSession) -> AsyncGenerator[AsyncClient, None]:
 
     app.dependency_overrides.clear()
 
+
+@pytest.fixture
+def minimal_ir_v1() -> dict:
+    """Load minimal IR fixture."""
+    import json
+    from pathlib import Path
+
+    fixture_path = Path(__file__).parent / "tests" / "fixtures" / "symbolic_ir" / "minimal_ir_v1.json"
+    with open(fixture_path) as f:
+        return json.load(f)
+
+
+@pytest.fixture
+def realistic_ir_v1() -> dict:
+    """Load realistic IR fixture."""
+    import json
+    from pathlib import Path
+
+    fixture_path = Path(__file__).parent / "tests" / "fixtures" / "symbolic_ir" / "realistic_ir_v1.json"
+    with open(fixture_path) as f:
+        return json.load(f)
+
+
+@pytest.fixture
+async def ir_service(db_session: AsyncSession):
+    """Create IR service instance."""
+    from app.services.ir_service import IRService
+    return IRService(db_session)
+

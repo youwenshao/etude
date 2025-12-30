@@ -1,0 +1,315 @@
+{
+  "version": "1.0.0",
+  "schema_type": "symbolic_score_ir",
+  "metadata": {
+    "title": "Nocturne Op. 9 No. 2",
+    "composer": "Frédéric Chopin",
+    "opus": "Op. 9",
+    "movement": "No. 2",
+    "source_pdf_artifact_id": "11111111-1111-1111-1111-111111111111",
+    "generated_by": {
+      "service": "omr-service",
+      "model": "Polyphonic-TrOMR",
+      "model_version": "1.0.0",
+      "timestamp": "2025-01-15T10:30:00Z",
+      "processing_time_seconds": 45.2,
+      "config": {
+        "confidence_threshold": 0.8,
+        "polyphony_mode": "full"
+      }
+    },
+    "page_count": 3,
+    "estimated_duration_seconds": 245.0,
+    "total_measures": 48,
+    "note_count": 156,
+    "chord_count": 42,
+    "voice_count": 2,
+    "average_detection_confidence": 0.92,
+    "low_confidence_regions": [
+      {
+        "start_measure": 32,
+        "end_measure": 35,
+        "average_confidence": 0.75,
+        "reason": "Complex polyphony with overlapping voices"
+      }
+    ]
+  },
+  "time_signature": {
+    "numerator": 12,
+    "denominator": 8,
+    "changes": []
+  },
+  "key_signature": {
+    "fifths": -3,
+    "mode": "major"
+  },
+  "tempo": {
+    "bpm": 120,
+    "beat_unit": "quarter",
+    "changes": [
+      {
+        "measure": 24,
+        "beat": 0.0,
+        "bpm": 110
+      }
+    ]
+  },
+  "staves": [
+    {
+      "staff_id": "staff_0",
+      "clef": "treble",
+      "part_name": "Piano Right Hand"
+    },
+    {
+      "staff_id": "staff_1",
+      "clef": "bass",
+      "part_name": "Piano Left Hand"
+    }
+  ],
+  "notes": [
+    {
+      "note_id": "note_0",
+      "pitch": {
+        "midi_note": 67,
+        "pitch_class": "G",
+        "octave": 4,
+        "scientific_notation": "G4",
+        "frequency_hz": 392.0,
+        "accidental": "flat"
+      },
+      "time": {
+        "onset_seconds": 0.0,
+        "measure": 1,
+        "beat": 0.0,
+        "beat_fraction": "0/1",
+        "absolute_beat": 0.0,
+        "quantization_confidence": 0.95
+      },
+      "duration": {
+        "duration_seconds": 2.0,
+        "duration_beats": 4.0,
+        "duration_fraction": "4/1",
+        "note_type": "half",
+        "dots": 1,
+        "is_tuplet": false,
+        "tuplet_ratio": null
+      },
+      "spatial": {
+        "staff_id": "staff_0",
+        "staff_position": 2.0,
+        "page_number": 1,
+        "bounding_box": {
+          "x": 0.15,
+          "y": 0.45,
+          "width": 0.08,
+          "height": 0.12,
+          "coordinate_system": "normalized"
+        },
+        "staff_assignment_confidence": 0.98
+      },
+      "articulation": ["legato"],
+      "dynamics": "p",
+      "chord_membership": {
+        "chord_id": "chord_0",
+        "confidence": 0.95,
+        "chord_position": "root"
+      },
+      "voice_assignment": {
+        "voice_id": "voice_0",
+        "confidence": 0.92,
+        "alternatives": []
+      },
+      "hand_assignment": {
+        "hand": "right",
+        "confidence": 0.98,
+        "alternatives": []
+      },
+      "is_grace_note": false,
+      "is_tied_from_previous": false,
+      "is_tied_to_next": true,
+      "confidence": {
+        "detection": 0.98,
+        "pitch": 0.97,
+        "onset_time": 0.95,
+        "duration": 0.94,
+        "voice": 0.92,
+        "hand": 0.98,
+        "chord_membership": 0.95,
+        "overall": 0.96
+      }
+    },
+    {
+      "note_id": "note_1",
+      "pitch": {
+        "midi_note": 70,
+        "pitch_class": "Bb",
+        "octave": 4,
+        "scientific_notation": "Bb4",
+        "frequency_hz": 466.16,
+        "accidental": "flat"
+      },
+      "time": {
+        "onset_seconds": 0.0,
+        "measure": 1,
+        "beat": 0.0,
+        "beat_fraction": "0/1",
+        "absolute_beat": 0.0,
+        "quantization_confidence": 0.95
+      },
+      "duration": {
+        "duration_seconds": 2.0,
+        "duration_beats": 4.0,
+        "duration_fraction": "4/1",
+        "note_type": "half",
+        "dots": 1,
+        "is_tuplet": false,
+        "tuplet_ratio": null
+      },
+      "spatial": {
+        "staff_id": "staff_0",
+        "staff_position": 4.0,
+        "page_number": 1,
+        "bounding_box": {
+          "x": 0.15,
+          "y": 0.40,
+          "width": 0.08,
+          "height": 0.12,
+          "coordinate_system": "normalized"
+        },
+        "staff_assignment_confidence": 0.98
+      },
+      "articulation": ["legato"],
+      "dynamics": "p",
+      "chord_membership": {
+        "chord_id": "chord_0",
+        "confidence": 0.95,
+        "chord_position": "third"
+      },
+      "voice_assignment": {
+        "voice_id": "voice_0",
+        "confidence": 0.92,
+        "alternatives": []
+      },
+      "hand_assignment": {
+        "hand": "right",
+        "confidence": 0.98,
+        "alternatives": []
+      },
+      "is_grace_note": false,
+      "is_tied_from_previous": false,
+      "is_tied_to_next": true,
+      "confidence": {
+        "detection": 0.98,
+        "pitch": 0.97,
+        "onset_time": 0.95,
+        "duration": 0.94,
+        "voice": 0.92,
+        "hand": 0.98,
+        "chord_membership": 0.95,
+        "overall": 0.96
+      }
+    },
+    {
+      "note_id": "note_2",
+      "pitch": {
+        "midi_note": 58,
+        "pitch_class": "Bb",
+        "octave": 3,
+        "scientific_notation": "Bb3",
+        "frequency_hz": 233.08,
+        "accidental": "flat"
+      },
+      "time": {
+        "onset_seconds": 0.0,
+        "measure": 1,
+        "beat": 0.0,
+        "beat_fraction": "0/1",
+        "absolute_beat": 0.0,
+        "quantization_confidence": 0.93
+      },
+      "duration": {
+        "duration_seconds": 2.0,
+        "duration_beats": 4.0,
+        "duration_fraction": "4/1",
+        "note_type": "half",
+        "dots": 1,
+        "is_tuplet": false,
+        "tuplet_ratio": null
+      },
+      "spatial": {
+        "staff_id": "staff_1",
+        "staff_position": -2.0,
+        "page_number": 1,
+        "bounding_box": {
+          "x": 0.15,
+          "y": 0.65,
+          "width": 0.08,
+          "height": 0.12,
+          "coordinate_system": "normalized"
+        },
+        "staff_assignment_confidence": 0.96
+      },
+      "articulation": null,
+      "dynamics": "p",
+      "chord_membership": null,
+      "voice_assignment": {
+        "voice_id": "voice_1",
+        "confidence": 0.90,
+        "alternatives": [
+          {
+            "voice_id": "voice_0",
+            "confidence": 0.15
+          }
+        ]
+      },
+      "hand_assignment": {
+        "hand": "left",
+        "confidence": 0.95,
+        "alternatives": []
+      },
+      "is_grace_note": false,
+      "is_tied_from_previous": false,
+      "is_tied_to_next": false,
+      "confidence": {
+        "detection": 0.96,
+        "pitch": 0.94,
+        "onset_time": 0.93,
+        "duration": 0.92,
+        "voice": 0.90,
+        "hand": 0.95,
+        "chord_membership": 1.0,
+        "overall": 0.93
+      }
+    }
+  ],
+  "chords": [
+    {
+      "chord_id": "chord_0",
+      "note_ids": ["note_0", "note_1"],
+      "time": {
+        "onset_seconds": 0.0,
+        "measure": 1,
+        "beat": 0.0,
+        "beat_fraction": "0/1",
+        "absolute_beat": 0.0,
+        "quantization_confidence": 0.95
+      },
+      "root": "Gb",
+      "chord_type": "major",
+      "confidence": 0.95
+    }
+  ],
+  "voices": [
+    {
+      "voice_id": "voice_0",
+      "staff_id": "staff_0",
+      "note_ids": ["note_0", "note_1"]
+    },
+    {
+      "voice_id": "voice_1",
+      "staff_id": "staff_1",
+      "note_ids": ["note_2"]
+    }
+  ]
+}
+
