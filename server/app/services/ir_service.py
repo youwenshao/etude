@@ -11,6 +11,7 @@ from app.models.artifact import Artifact, ArtifactType
 from app.models.artifact_lineage import ArtifactLineage
 from app.schemas.symbolic_ir import SchemaRegistry
 from app.schemas.symbolic_ir.v1.schema import SymbolicScoreIR
+from app.schemas.symbolic_ir.v2.schema import SymbolicScoreIRV2
 from app.services.storage_service import storage_service
 from app.config import settings
 
@@ -28,7 +29,7 @@ class IRService:
     async def store_ir(
         self,
         job_id: UUID,
-        ir: SymbolicScoreIR,
+        ir: SymbolicScoreIR | SymbolicScoreIRV2,
         parent_artifact_id: Optional[UUID] = None,
     ) -> Artifact:
         """
@@ -61,9 +62,19 @@ class IRService:
             "composer": ir.metadata.composer,
         }
 
+        # Determine artifact type and storage path based on version
+        if ir.version.startswith("2."):
+            artifact_type = ArtifactType.IR_V2.value
+            version_path = "v2"
+            transformation_type = "fingering_to_ir"
+        else:
+            artifact_type = ArtifactType.IR_V1.value
+            version_path = "v1"
+            transformation_type = "omr_to_ir"
+
         # Generate storage key
         artifact_id = UUID(int=0)  # Placeholder, will be replaced after creation
-        storage_key = f"jobs/{job_id}/ir/v1/{artifact_id}.json"
+        storage_key = f"jobs/{job_id}/ir/{version_path}/{artifact_id}.json"
 
         # Determine bucket
         bucket = settings.MINIO_BUCKET_ARTIFACTS
@@ -79,7 +90,7 @@ class IRService:
         # Create database record
         artifact = Artifact(
             job_id=job_id,
-            artifact_type=ArtifactType.IR_V1.value,
+            artifact_type=artifact_type,
             schema_version=ir.version,
             storage_path=storage_key,  # Temporary, will update
             file_size=len(ir_bytes),
@@ -91,7 +102,7 @@ class IRService:
         await self.db.flush()  # Get artifact.id
 
         # Update storage key with actual artifact ID and re-upload
-        actual_storage_key = f"jobs/{job_id}/ir/v1/{artifact.id}.json"
+        actual_storage_key = f"jobs/{job_id}/ir/{version_path}/{artifact.id}.json"
         if actual_storage_key != storage_key:
             # Re-upload with correct path
             await storage_service.upload_file(
@@ -109,7 +120,7 @@ class IRService:
             lineage = ArtifactLineage(
                 source_artifact_id=parent_artifact_id,
                 derived_artifact_id=artifact.id,
-                transformation_type="omr_to_ir",
+                transformation_type=transformation_type,
                 transformation_version=ir.version,
             )
             self.db.add(lineage)
@@ -122,7 +133,7 @@ class IRService:
     async def load_ir(
         self,
         artifact_id: UUID,
-    ) -> Tuple[Artifact, SymbolicScoreIR]:
+    ) -> Tuple[Artifact, SymbolicScoreIR | SymbolicScoreIRV2]:
         """
         Load an IR from storage and validate it.
 
@@ -165,7 +176,7 @@ class IRService:
 
         return artifact, ir
 
-    async def validate_ir(self, ir_data: dict) -> SymbolicScoreIR:
+    async def validate_ir(self, ir_data: dict) -> SymbolicScoreIR | SymbolicScoreIRV2:
         """
         Validate IR data against schema.
 
@@ -186,7 +197,7 @@ class IRService:
         self,
         job_id: UUID,
         artifact_type: ArtifactType = ArtifactType.IR_V1,
-    ) -> Optional[Tuple[Artifact, SymbolicScoreIR]]:
+    ) -> Optional[Tuple[Artifact, SymbolicScoreIR | SymbolicScoreIRV2]]:
         """
         Get the most recent IR of a specific type for a job.
 

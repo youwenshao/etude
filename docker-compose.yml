@@ -78,6 +78,7 @@ services:
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - OMR_SERVICE_URL=${OMR_SERVICE_URL:-http://omr:8001}
+      - FINGERING_SERVICE_URL=${FINGERING_SERVICE_URL:-http://fingering-service:8002}
     depends_on:
       postgres:
         condition: service_healthy
@@ -118,11 +119,71 @@ services:
       - etude_network
     command: uvicorn app.main:app --host 0.0.0.0 --port 8001
 
+  fingering-service:
+    build:
+      context: ./services/fingering
+      dockerfile: Dockerfile
+    container_name: etude_fingering
+    ports:
+      - "8002:8002"
+    volumes:
+      - ./services/fingering:/app
+      - fingering_models:/app/models
+    environment:
+      - FINGERING_MODEL_TYPE=${FINGERING_MODEL_TYPE:-arlstm}
+      - FINGERING_ARLSTM_MODEL_PATH=${FINGERING_ARLSTM_MODEL_PATH:-/app/models/arlstm/best_model.pt}
+      - FINGERING_ARGNN_MODEL_PATH=${FINGERING_ARGNN_MODEL_PATH:-/app/models/argnn/best_model.pt}
+      - FINGERING_DEVICE=${FINGERING_DEVICE:-cpu}
+      - FINGERING_USE_GPU=${FINGERING_USE_GPU:-false}
+      - FINGERING_DEFAULT_POLICY=${FINGERING_DEFAULT_POLICY:-mle}
+      - FINGERING_LOG_LEVEL=${FINGERING_LOG_LEVEL:-INFO}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8002/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+    networks:
+      - etude_network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8002
+
+  celery-worker:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: etude_celery_worker
+    volumes:
+      - ./server:/app
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY}
+      - MINIO_USE_SSL=${MINIO_USE_SSL:-false}
+      - REDIS_URL=${REDIS_URL}
+      - OMR_SERVICE_URL=${OMR_SERVICE_URL:-http://omr:8001}
+      - FINGERING_SERVICE_URL=${FINGERING_SERVICE_URL:-http://fingering-service:8002}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      omr:
+        condition: service_started
+      fingering-service:
+        condition: service_started
+    networks:
+      - etude_network
+    command: celery -A app.celery_app worker --loglevel=info --queues=fingering,omr
+
 volumes:
   postgres_data:
   minio_data:
   redis_data:
   omr_models:
+  fingering_models:
 
 networks:
   etude_network:

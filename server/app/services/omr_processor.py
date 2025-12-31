@@ -104,6 +104,16 @@ async def process_omr_job(job_id: UUID, db: AsyncSession) -> None:
 
         logger.info(f"OMR processing completed successfully for job {job_id}")
 
+        # Trigger fingering inference task
+        from app.tasks.fingering_tasks import process_fingering_task
+
+        process_fingering_task.delay(
+            job_id=str(job_id),
+            ir_v1_artifact_id=str(ir_artifact.id),
+        )
+
+        logger.info(f"Triggered fingering inference task for job {job_id}")
+
     except Exception as e:
         logger.error(
             f"OMR processing failed for job {job_id}: {e}",

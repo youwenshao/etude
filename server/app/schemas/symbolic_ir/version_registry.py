@@ -7,15 +7,16 @@ from pydantic import BaseModel
 from packaging import version as pkg_version
 
 from app.schemas.symbolic_ir.v1.schema import SymbolicScoreIR
+from app.schemas.symbolic_ir.v2.schema import SymbolicScoreIRV2
 
 
 class IRSchemaVersion(str, Enum):
     """Enumeration of all IR schema versions."""
 
     V1_0_0 = "1.0.0"
+    V2_0_0 = "2.0.0"
     # Future versions will be added here
     # V1_1_0 = "1.1.0"
-    # V2_0_0 = "2.0.0"
 
 
 class SchemaRegistry:
@@ -41,7 +42,7 @@ class SchemaRegistry:
     @classmethod
     def get_latest_version(cls) -> str:
         """Get the latest schema version."""
-        return IRSchemaVersion.V1_0_0.value
+        return IRSchemaVersion.V2_0_0.value
 
     @classmethod
     def is_compatible(cls, version: str, min_version: str) -> bool:
@@ -54,4 +55,7 @@ class SchemaRegistry:
 
 # Register v1.0.0 schema
 SchemaRegistry.register(IRSchemaVersion.V1_0_0.value, SymbolicScoreIR)
+
+# Register v2.0.0 schema
+SchemaRegistry.register(IRSchemaVersion.V2_0_0.value, SymbolicScoreIRV2)
 

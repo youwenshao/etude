@@ -107,3 +107,36 @@ async def ir_service(db_session: AsyncSession):
     from app.services.ir_service import IRService
     return IRService(db_session)
 
+
+@pytest.fixture
+def minimal_ir_v2(minimal_ir_v1) -> dict:
+    """Create minimal IR v2 from IR v1."""
+    ir_v2_data = minimal_ir_v1.copy()
+    ir_v2_data["version"] = "2.0.0"
+    ir_v2_data["fingering_metadata"] = {
+        "model_name": "PRamoneda-ArLSTM",
+        "model_version": "1.0.0",
+        "ir_to_model_adapter_version": "1.0.0",
+        "model_to_ir_adapter_version": "1.0.0",
+        "uncertainty_policy": "mle",
+        "notes_annotated": len(ir_v2_data.get("notes", [])),
+        "total_notes": len(ir_v2_data.get("notes", [])),
+        "coverage": 1.0 if len(ir_v2_data.get("notes", [])) > 0 else 0.0,
+    }
+    
+    # Add fingering to notes if they exist
+    if ir_v2_data.get("notes"):
+        for note in ir_v2_data["notes"]:
+            note["fingering"] = {
+                "finger": 1,
+                "hand": "right",
+                "confidence": 0.95,
+                "alternatives": [],
+                "uncertainty_policy": "mle",
+                "model_name": "PRamoneda-ArLSTM",
+                "model_version": "1.0.0",
+                "adapter_version": "1.0.0",
+            }
+    
+    return ir_v2_data
+

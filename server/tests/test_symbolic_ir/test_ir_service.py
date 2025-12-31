@@ -182,3 +182,149 @@ async def test_store_ir_with_lineage(db_session, test_user, minimal_ir_v1):
     assert lineage is not None
     assert lineage.transformation_type == "omr_to_ir"
 
+
+@pytest.mark.asyncio
+async def test_store_ir_v2(db_session, test_user, minimal_ir_v1):
+    """Test storing an IR v2."""
+    # Create a job
+    job = Job(
+        user_id=test_user.id,
+        status=JobStatus.PENDING.value,
+    )
+    db_session.add(job)
+    await db_session.flush()
+    
+    # Create IR service
+    ir_service = IRService(db_session)
+    
+    # Create IR v2 from v1
+    ir_v2_data = minimal_ir_v1.copy()
+    ir_v2_data["version"] = "2.0.0"
+    ir_v2_data["fingering_metadata"] = {
+        "model_name": "PRamoneda-ArLSTM",
+        "model_version": "1.0.0",
+        "ir_to_model_adapter_version": "1.0.0",
+        "model_to_ir_adapter_version": "1.0.0",
+        "uncertainty_policy": "mle",
+        "notes_annotated": len(ir_v2_data.get("notes", [])),
+        "total_notes": len(ir_v2_data.get("notes", [])),
+        "coverage": 1.0,
+    }
+    
+    from app.schemas.symbolic_ir.v2.schema import SymbolicScoreIRV2
+    ir_v2 = SymbolicScoreIRV2.model_validate(ir_v2_data)
+    
+    # Store IR v2
+    artifact = await ir_service.store_ir(
+        job_id=job.id,
+        ir=ir_v2,
+    )
+    
+    assert artifact.job_id == job.id
+    assert artifact.artifact_type == ArtifactType.IR_V2.value
+    assert artifact.schema_version == "2.0.0"
+    assert artifact.file_size > 0
+    assert artifact.checksum is not None
+
+
+@pytest.mark.asyncio
+async def test_load_ir_v2(db_session, test_user, minimal_ir_v1):
+    """Test loading an IR v2."""
+    # Create a job
+    job = Job(
+        user_id=test_user.id,
+        status=JobStatus.PENDING.value,
+    )
+    db_session.add(job)
+    await db_session.flush()
+    
+    # Create IR service
+    ir_service = IRService(db_session)
+    
+    # Create and store IR v2
+    ir_v2_data = minimal_ir_v1.copy()
+    ir_v2_data["version"] = "2.0.0"
+    ir_v2_data["fingering_metadata"] = {
+        "model_name": "PRamoneda-ArLSTM",
+        "model_version": "1.0.0",
+        "ir_to_model_adapter_version": "1.0.0",
+        "model_to_ir_adapter_version": "1.0.0",
+        "uncertainty_policy": "mle",
+        "notes_annotated": len(ir_v2_data.get("notes", [])),
+        "total_notes": len(ir_v2_data.get("notes", [])),
+        "coverage": 1.0,
+    }
+    
+    from app.schemas.symbolic_ir.v2.schema import SymbolicScoreIRV2
+    ir_v2 = SymbolicScoreIRV2.model_validate(ir_v2_data)
+    artifact = await ir_service.store_ir(job_id=job.id, ir=ir_v2)
+    
+    # Load IR v2
+    loaded_artifact, loaded_ir = await ir_service.load_ir(artifact.id)
+    
+    assert loaded_artifact.id == artifact.id
+    assert loaded_ir.version == "2.0.0"
+    assert isinstance(loaded_ir, SymbolicScoreIRV2)
+    assert loaded_ir.fingering_metadata.model_name == "PRamoneda-ArLSTM"
+    assert len(loaded_ir.notes) == len(ir_v2.notes)
+
+
+@pytest.mark.asyncio
+async def test_store_ir_v2_with_lineage(db_session, test_user, minimal_ir_v1):
+    """Test storing IR v2 with parent IR v1 artifact lineage."""
+    # Create a job
+    job = Job(
+        user_id=test_user.id,
+        status=JobStatus.PENDING.value,
+    )
+    db_session.add(job)
+    await db_session.flush()
+    
+    # Store IR v1 first
+    ir_service = IRService(db_session)
+    ir_v1 = SymbolicScoreIR.model_validate(minimal_ir_v1)
+    ir_v1_artifact = await ir_service.store_ir(job_id=job.id, ir=ir_v1)
+    ir_v1_artifact.artifact_type = ArtifactType.IR_V1.value
+    await db_session.commit()
+    await db_session.refresh(ir_v1_artifact)
+    
+    # Create IR v2 from v1
+    ir_v2_data = minimal_ir_v1.copy()
+    ir_v2_data["version"] = "2.0.0"
+    ir_v2_data["fingering_metadata"] = {
+        "model_name": "PRamoneda-ArLSTM",
+        "model_version": "1.0.0",
+        "ir_to_model_adapter_version": "1.0.0",
+        "model_to_ir_adapter_version": "1.0.0",
+        "uncertainty_policy": "mle",
+        "notes_annotated": len(ir_v2_data.get("notes", [])),
+        "total_notes": len(ir_v2_data.get("notes", [])),
+        "coverage": 1.0,
+    }
+    
+    from app.schemas.symbolic_ir.v2.schema import SymbolicScoreIRV2
+    ir_v2 = SymbolicScoreIRV2.model_validate(ir_v2_data)
+    
+    # Store IR v2 with parent
+    ir_v2_artifact = await ir_service.store_ir(
+        job_id=job.id,
+        ir=ir_v2,
+        parent_artifact_id=ir_v1_artifact.id,
+    )
+    
+    assert ir_v2_artifact.parent_artifact_id == ir_v1_artifact.id
+    
+    # Check lineage was created
+    from app.models.artifact_lineage import ArtifactLineage
+    from sqlalchemy import select
+    
+    result = await db_session.execute(
+        select(ArtifactLineage).where(
+            ArtifactLineage.source_artifact_id == ir_v1_artifact.id,
+            ArtifactLineage.derived_artifact_id == ir_v2_artifact.id,
+        )
+    )
+    lineage = result.scalar_one_or_none()
+    assert lineage is not None
+    assert lineage.transformation_type == "fingering_to_ir"
+

@@ -69,6 +69,12 @@ class Settings(BaseSettings):
         description="Base URL for OMR service",
     )
 
+    # Fingering Service
+    FINGERING_SERVICE_URL: str = Field(
+        default="http://fingering-service:8002",
+        description="Base URL for Fingering service",
+    )
+
     @property
     def is_development(self) -> bool:
         """Check if running in development mode."""

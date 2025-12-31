@@ -293,8 +293,38 @@ def test_job_status_transitions():
     )
     assert is_valid, f"Invalid transition: {error}"
 
+    # OMR_COMPLETED -> FINGERING_PROCESSING
+    is_valid, error = validate_transition(
+        JobStatus.OMR_COMPLETED.value, JobStatus.FINGERING_PROCESSING.value
+    )
+    assert is_valid, f"Invalid transition: {error}"
+
+    # FINGERING_PROCESSING -> FINGERING_COMPLETED
+    is_valid, error = validate_transition(
+        JobStatus.FINGERING_PROCESSING.value, JobStatus.FINGERING_COMPLETED.value
+    )
+    assert is_valid, f"Invalid transition: {error}"
+
+    # FINGERING_PROCESSING -> FINGERING_FAILED
+    is_valid, error = validate_transition(
+        JobStatus.FINGERING_PROCESSING.value, JobStatus.FINGERING_FAILED.value
+    )
+    assert is_valid, f"Invalid transition: {error}"
+
+    # FINGERING_FAILED -> FINGERING_PROCESSING (retry)
+    is_valid, error = validate_transition(
+        JobStatus.FINGERING_FAILED.value, JobStatus.FINGERING_PROCESSING.value
+    )
+    assert is_valid, f"Invalid transition: {error}"
+
     # Invalid: OMR_COMPLETED -> OMR_PROCESSING (should fail)
     is_valid, error = validate_transition(
         JobStatus.OMR_COMPLETED.value, JobStatus.OMR_PROCESSING.value
     )
     assert not is_valid, "Should not allow transition from OMR_COMPLETED to OMR_PROCESSING"
+
+    # Invalid: FINGERING_COMPLETED -> FINGERING_PROCESSING (should fail)
+    is_valid, error = validate_transition(
+        JobStatus.FINGERING_COMPLETED.value, JobStatus.FINGERING_PROCESSING.value
+    )
+    assert not is_valid, "Should not allow transition from FINGERING_COMPLETED to FINGERING_PROCESSING"
