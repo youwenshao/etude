@@ -79,6 +79,7 @@ services:
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
       - OMR_SERVICE_URL=${OMR_SERVICE_URL:-http://omr:8001}
       - FINGERING_SERVICE_URL=${FINGERING_SERVICE_URL:-http://fingering-service:8002}
+      - RENDERER_SERVICE_URL=${RENDERER_SERVICE_URL:-http://renderer-service:8003}
     depends_on:
       postgres:
         condition: service_healthy
@@ -147,6 +148,31 @@ services:
       - etude_network
     command: uvicorn app.main:app --host 0.0.0.0 --port 8002
 
+  renderer-service:
+    build:
+      context: ./services/renderer
+      dockerfile: Dockerfile
+    container_name: etude_renderer
+    ports:
+      - "8003:8003"
+    volumes:
+      - ./services/renderer:/app
+    environment:
+      - RENDERER_LOG_LEVEL=${RENDERER_LOG_LEVEL:-INFO}
+      - RENDERER_INCLUDE_FINGERING=${RENDERER_INCLUDE_FINGERING:-true}
+      - RENDERER_DEFAULT_MUSICXML_VERSION=${RENDERER_DEFAULT_MUSICXML_VERSION:-4.0}
+      - RENDERER_DEFAULT_MIDI_TEMPO=${RENDERER_DEFAULT_MIDI_TEMPO:-120}
+      - RENDERER_DEFAULT_SVG_SCALE=${RENDERER_DEFAULT_SVG_SCALE:-40}
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8003/health"]
+      interval: 30s
+      timeout: 10s
+      start_period: 5s
+      retries: 3
+    networks:
+      - etude_network
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8003
+
   celery-worker:
     build:
       context: ./server
@@ -163,6 +189,7 @@ services:
       - REDIS_URL=${REDIS_URL}
       - OMR_SERVICE_URL=${OMR_SERVICE_URL:-http://omr:8001}
       - FINGERING_SERVICE_URL=${FINGERING_SERVICE_URL:-http://fingering-service:8002}
+      - RENDERER_SERVICE_URL=${RENDERER_SERVICE_URL:-http://renderer-service:8003}
       - ENVIRONMENT=${ENVIRONMENT:-development}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
     depends_on:
@@ -174,9 +201,11 @@ services:
         condition: service_started
       fingering-service:
         condition: service_started
+      renderer-service:
+        condition: service_started
     networks:
       - etude_network
-    command: celery -A app.celery_app worker --loglevel=info --queues=fingering,omr
+    command: celery -A app.celery_app worker --loglevel=info --queues=fingering,omr,rendering
 
 volumes:
   postgres_data:

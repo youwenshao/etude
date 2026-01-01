@@ -10,7 +10,7 @@ celery_app = Celery(
     "etude",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.tasks.fingering_tasks"],
+    include=["app.tasks.fingering_tasks", "app.tasks.rendering_tasks"],
 )
 
 # Celery configuration
@@ -31,5 +31,6 @@ celery_app.conf.update(
 celery_app.conf.task_routes = {
     "app.tasks.fingering_tasks.*": {"queue": "fingering"},
     "app.tasks.omr_tasks.*": {"queue": "omr"},
+    "app.tasks.rendering_tasks.*": {"queue": "rendering"},
 }
 

@@ -82,7 +82,7 @@ async def download_artifact(
         "pdf": "application/pdf",
         "ir_v1": "application/json",
         "ir_v2": "application/json",
-        "musicxml": "application/xml",
+        "musicxml": "application/vnd.recordare.musicxml+xml",
         "midi": "audio/midi",
         "svg": "image/svg+xml",
     }

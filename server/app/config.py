@@ -75,6 +75,12 @@ class Settings(BaseSettings):
         description="Base URL for Fingering service",
     )
 
+    # Renderer Service
+    RENDERER_SERVICE_URL: str = Field(
+        default="http://renderer-service:8003",
+        description="Base URL for Renderer service",
+    )
+
     @property
     def is_development(self) -> bool:
         """Check if running in development mode."""

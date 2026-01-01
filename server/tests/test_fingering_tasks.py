@@ -221,3 +221,122 @@ async def test_process_fingering_async_error(db_session, test_user, minimal_ir_v
     finally:
         app.services.ir_service.storage_service = original_storage
 
+
+@pytest.mark.asyncio
+async def test_process_fingering_triggers_rendering(db_session, test_user, minimal_ir_v1):
+    """Test that fingering processing triggers rendering task."""
+    from app.services.job_service import JobService
+    from app.services.ir_service import IRService
+
+    # Create a job with IR v1 artifact
+    job = Job(
+        user_id=test_user.id,
+        status=JobStatus.OMR_COMPLETED.value,
+        stage=JobStage.FINGERING.value,
+        job_metadata={"filename": "test.pdf"},
+    )
+    db_session.add(job)
+    await db_session.flush()
+
+    # Store IR v1 artifact
+    ir_service = IRService(db_session)
+    ir_v1 = SymbolicScoreIR.model_validate(minimal_ir_v1)
+    ir_v1_artifact = await ir_service.store_ir(
+        job_id=job.id,
+        ir=ir_v1,
+        parent_artifact_id=None,
+    )
+    ir_v1_artifact.artifact_type = ArtifactType.IR_V1.value
+    await db_session.commit()
+    await db_session.refresh(ir_v1_artifact)
+
+    # Mock fingering client response
+    mock_ir_v2 = minimal_ir_v1.copy()
+    mock_ir_v2["version"] = "2.0.0"
+    mock_ir_v2["fingering_metadata"] = {
+        "model_name": "PRamoneda-ArLSTM",
+        "model_version": "1.0.0",
+        "ir_to_model_adapter_version": "1.0.0",
+        "model_to_ir_adapter_version": "1.0.0",
+        "uncertainty_policy": "mle",
+        "notes_annotated": len(minimal_ir_v1.get("notes", [])),
+        "total_notes": len(minimal_ir_v1.get("notes", [])),
+        "coverage": 1.0,
+    }
+
+    # Add fingering to notes if they exist
+    if mock_ir_v2.get("notes"):
+        for note in mock_ir_v2["notes"]:
+            note["fingering"] = {
+                "finger": 1,
+                "hand": "right",
+                "confidence": 0.95,
+                "alternatives": [],
+                "uncertainty_policy": "mle",
+                "model_name": "PRamoneda-ArLSTM",
+                "model_version": "1.0.0",
+                "adapter_version": "1.0.0",
+            }
+
+    mock_fingering_response = {
+        "success": True,
+        "symbolic_ir_v2": mock_ir_v2,
+        "processing_time_seconds": 1.5,
+        "message": "Fingering inference completed successfully",
+    }
+
+    # Mock fingering client
+    mock_fingering_client = AsyncMock()
+    mock_fingering_client.infer_fingering = AsyncMock(return_value=mock_fingering_response)
+
+    # Mock storage service
+    ir_v1_json = ir_v1.to_json(indent=2)
+    ir_v1_bytes = ir_v1_json.encode("utf-8")
+    
+    mock_storage_service = MagicMock()
+    mock_storage_service.download_file = AsyncMock(return_value=ir_v1_bytes)
+    mock_storage_service.upload_file = AsyncMock(return_value=f"jobs/{job.id}/artifacts/test_ir_v2.json")
+    mock_storage_service.delete_file = AsyncMock(return_value=True)
+
+    # Patch services
+    import app.services.ir_service
+    original_storage = app.services.ir_service.storage_service
+    app.services.ir_service.storage_service = mock_storage_service
+
+    try:
+        # Mock AsyncSessionLocal
+        from contextlib import asynccontextmanager
+        
+        @asynccontextmanager
+        async def mock_session_local():
+            yield db_session
+        
+        # Mock rendering task - patch in the source module since it's imported inside the function
+        mock_rendering_task = MagicMock()
+        mock_rendering_task.delay = MagicMock()
+        
+        with patch("app.tasks.fingering_tasks.AsyncSessionLocal", mock_session_local):
+            with patch("app.tasks.fingering_tasks.get_fingering_client", return_value=mock_fingering_client):
+                # Patch in rendering_tasks module - the import inside the function will use this
+                with patch("app.tasks.rendering_tasks.process_rendering_task", mock_rendering_task):
+                    mock_task = MagicMock()
+                    result = await process_fingering_async(
+                        mock_task,
+                        job.id,
+                        ir_v1_artifact.id,
+                    )
+
+                    # Verify rendering task was triggered
+                    assert mock_rendering_task.delay.called
+                    call_args = mock_rendering_task.delay.call_args
+                    # Check if called with positional or keyword arguments
+                    if call_args.args:
+                        assert call_args.args[0] == str(job.id)  # job_id
+                        assert call_args.args[1] == result["ir_v2_artifact_id"]  # ir_v2_artifact_id
+                    else:
+                        assert call_args.kwargs["job_id"] == str(job.id)
+                        assert call_args.kwargs["ir_v2_artifact_id"] == result["ir_v2_artifact_id"]
+
+    finally:
+        app.services.ir_service.storage_service = original_storage
+

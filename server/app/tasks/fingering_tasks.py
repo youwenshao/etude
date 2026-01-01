@@ -86,6 +86,15 @@ async def process_fingering_async(
             # Update job status
             await job_service.update_job_status(job_id, JobStatus.FINGERING_COMPLETED)
 
+            # Trigger rendering task
+            from app.tasks.rendering_tasks import process_rendering_task
+
+            process_rendering_task.delay(
+                job_id=str(job_id), ir_v2_artifact_id=str(ir_v2_artifact.id)
+            )
+
+            logger.info("Triggered rendering task")
+
             return {
                 "success": True,
                 "job_id": str(job_id),

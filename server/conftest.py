@@ -140,3 +140,9 @@ def minimal_ir_v2(minimal_ir_v1) -> dict:
     
     return ir_v2_data
 
+
+@pytest.fixture
+def test_pdf_bytes() -> bytes:
+    """Create minimal PDF content for testing."""
+    return b"%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n>>\nendobj\nxref\n0 1\ntrailer\n<<\n/Size 1\n/Root 1 0 R\n>>\nstartxref\n9\n%%EOF"
+
