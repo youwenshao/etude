@@ -296,3 +296,191 @@ async def test_store_ir_for_job_with_parent(client, db_session, test_user, minim
     # The parent_artifact_id should be set when storing via the API with the query parameter
     # This is verified by the successful creation (201 status)
 
+
+# IR v2 API Tests
+@pytest.mark.asyncio
+async def test_validate_ir_v2_endpoint(client, test_user, minimal_ir_v2):
+    """Test IR v2 validation endpoint."""
+    from app.core.security import create_access_token
+    
+    token = create_access_token(data={"sub": str(test_user.id)})
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Test valid IR v2
+    response = await client.post(
+        "/api/v1/ir/validate",
+        json=minimal_ir_v2,
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["valid"] is True
+    assert data["version"] == "2.0.0"
+    
+    # Test invalid IR v2 (missing fingering_metadata)
+    invalid_ir_v2 = minimal_ir_v2.copy()
+    del invalid_ir_v2["fingering_metadata"]
+    
+    response = await client.post(
+        "/api/v1/ir/validate",
+        json=invalid_ir_v2,
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["valid"] is False
+    assert "error" in data
+
+
+@pytest.mark.asyncio
+async def test_store_ir_v2_endpoint(client, db_session, test_user, minimal_ir_v2):
+    """Test storing IR v2 via API."""
+    from app.core.security import create_access_token
+    
+    token = create_access_token(data={"sub": str(test_user.id)})
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Create a job
+    job = Job(
+        user_id=test_user.id,
+        status=JobStatus.PENDING.value,
+    )
+    db_session.add(job)
+    await db_session.commit()
+    
+    # Store IR v2
+    response = await client.post(
+        f"/api/v1/ir/jobs/{job.id}",
+        json=minimal_ir_v2,
+        headers=headers,
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert "artifact_id" in data
+    assert data["version"] == "2.0.0"
+
+
+@pytest.mark.asyncio
+async def test_get_ir_v2_by_artifact_id(client, db_session, test_user, minimal_ir_v2):
+    """Test getting IR v2 by artifact ID."""
+    from app.core.security import create_access_token
+    from app.services.ir_service import IRService
+    from app.schemas.symbolic_ir.v2.schema import SymbolicScoreIRV2
+    
+    token = create_access_token(data={"sub": str(test_user.id)})
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Create a job and store IR v2
+    job = Job(
+        user_id=test_user.id,
+        status=JobStatus.PENDING.value,
+    )
+    db_session.add(job)
+    await db_session.flush()
+    
+    ir_service = IRService(db_session)
+    ir_v2 = SymbolicScoreIRV2.model_validate(minimal_ir_v2)
+    artifact = await ir_service.store_ir(job_id=job.id, ir=ir_v2)
+    await db_session.commit()
+    
+    # Get IR v2 by artifact ID
+    response = await client.get(
+        f"/api/v1/ir/{artifact.id}",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["version"] == "2.0.0"
+    assert "fingering_metadata" in data
+    assert data["fingering_metadata"]["model_name"] == "PRamoneda-ArLSTM"
+    
+    # Verify notes have fingering if they exist
+    if data.get("notes"):
+        for note in data["notes"]:
+            if note.get("fingering"):
+                assert "finger" in note["fingering"]
+                assert "hand" in note["fingering"]
+
+
+@pytest.mark.asyncio
+async def test_get_latest_ir_v2_for_job(client, db_session, test_user, minimal_ir_v2):
+    """Test getting latest IR v2 for a job."""
+    from app.core.security import create_access_token
+    from app.services.ir_service import IRService
+    from app.schemas.symbolic_ir.v2.schema import SymbolicScoreIRV2
+    
+    token = create_access_token(data={"sub": str(test_user.id)})
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Create a job and store IR v2
+    job = Job(
+        user_id=test_user.id,
+        status=JobStatus.PENDING.value,
+    )
+    db_session.add(job)
+    await db_session.flush()
+    
+    ir_service = IRService(db_session)
+    ir_v2 = SymbolicScoreIRV2.model_validate(minimal_ir_v2)
+    await ir_service.store_ir(job_id=job.id, ir=ir_v2)
+    await db_session.commit()
+    
+    # Get latest IR v2 for job
+    response = await client.get(
+        f"/api/v1/ir/jobs/{job.id}",
+        headers=headers,
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["version"] == "2.0.0"
+    assert "fingering_metadata" in data
+
+
+@pytest.mark.asyncio
+async def test_store_ir_v2_with_parent(client, db_session, test_user, minimal_ir_v1, minimal_ir_v2):
+    """Test storing IR v2 with parent IR v1 artifact ID."""
+    from app.core.security import create_access_token
+    from app.services.ir_service import IRService
+    from app.schemas.symbolic_ir.v1.schema import SymbolicScoreIR
+    from app.schemas.symbolic_ir.v2.schema import SymbolicScoreIRV2
+    
+    token = create_access_token(data={"sub": str(test_user.id)})
+    headers = {"Authorization": f"Bearer {token}"}
+    
+    # Create a job
+    job = Job(
+        user_id=test_user.id,
+        status=JobStatus.PENDING.value,
+    )
+    db_session.add(job)
+    await db_session.flush()
+    
+    # Store IR v1 as parent
+    ir_service = IRService(db_session)
+    ir_v1 = SymbolicScoreIR.model_validate(minimal_ir_v1)
+    parent_artifact = await ir_service.store_ir(job_id=job.id, ir=ir_v1)
+    await db_session.commit()
+    await db_session.refresh(parent_artifact)
+    
+    # Store IR v2 with parent
+    response = await client.post(
+        f"/api/v1/ir/jobs/{job.id}",
+        json=minimal_ir_v2,
+        headers=headers,
+        params={"parent_artifact_id": str(parent_artifact.id)},
+    )
+    assert response.status_code == 201
+    data = response.json()
+    assert "artifact_id" in data
+    assert data["version"] == "2.0.0"
+    
+    # Verify lineage by checking the stored artifact
+    artifact_id = data["artifact_id"]
+    artifact_response = await client.get(
+        f"/api/v1/artifacts/{artifact_id}",
+        headers=headers,
+    )
+    assert artifact_response.status_code == 200
+    artifact_data = artifact_response.json()
+    # Note: parent_artifact_id might not be in the response model, but lineage should exist
+

@@ -166,8 +166,14 @@ async def get_latest_ir_for_job(
             detail="Not authorized to access this job",
         )
 
-    # Get latest IR
-    result = await ir_service.get_ir_by_job(job_id)
+    # Get latest IR - try IR v2 first, then fall back to IR v1
+    from app.models.artifact import ArtifactType
+    
+    result = await ir_service.get_ir_by_job(job_id, artifact_type=ArtifactType.IR_V2)
+    if not result:
+        # Fall back to IR v1 if v2 not found
+        result = await ir_service.get_ir_by_job(job_id, artifact_type=ArtifactType.IR_V1)
+    
     if not result:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

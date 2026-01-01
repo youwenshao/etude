@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import '../features/auth/screens/login_screen.dart';
@@ -7,6 +6,7 @@ import '../features/auth/providers/auth_state_provider.dart';
 import '../features/jobs/screens/jobs_list_screen.dart';
 import '../features/jobs/screens/job_detail_screen.dart';
 import '../features/upload/screens/upload_screen.dart';
+import '../features/score_viewer/screens/score_viewer_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -63,13 +63,7 @@ final appRouterProvider = Provider<GoRouter>((ref) {
         name: 'score',
         builder: (context, state) {
           final jobId = state.pathParameters['jobId']!;
-          // TODO: Implement score viewer screen
-          return Scaffold(
-            appBar: AppBar(title: const Text('Score Viewer')),
-            body: Center(
-              child: Text('Score viewer for job $jobId (Coming soon)'),
-            ),
-          );
+          return ScoreViewerScreen(jobId: jobId);
         },
       ),
     ],
