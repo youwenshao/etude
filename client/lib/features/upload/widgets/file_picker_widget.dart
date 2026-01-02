@@ -28,7 +28,7 @@ class FilePickerWidget extends StatelessWidget {
       if (fileSize > AppConfig.maxFileSizeBytes) {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text(
                 'File size exceeds ${AppConfig.maxFileSizeMB}MB limit',
               ),

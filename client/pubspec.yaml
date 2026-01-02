@@ -43,6 +43,19 @@ dependencies:
   intl: ^0.18.1
   logger: ^2.0.2
   uuid: ^4.2.2
+  
+  # Audio playback
+  just_audio: ^0.9.36
+  rxdart: ^0.27.7
+  
+  # File sharing
+  share_plus: ^7.2.1
+
+  # Web View
+  webview_flutter: ^4.4.2
+  webview_flutter_web: ^0.2.2+2
+  webview_flutter_android: ^3.13.0
+  webview_flutter_wkwebview: ^3.9.4
 
 dev_dependencies:
   flutter_test:
@@ -60,4 +73,6 @@ flutter:
   assets:
     - assets/images/
     - assets/icons/
+    - assets/js/
+    - assets/score_viewer.html
 

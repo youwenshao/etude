@@ -554,7 +554,7 @@ class OMRToIRAdapter:
             },
             "page_count": page_count,
             "estimated_duration_seconds": estimated_duration,
-            "total_measures": max((n["time"]["measure"] for n in notes), default=0),
+            "total_measures": max((n["time"]["measure"] for n in notes), default=0) or 1,
             "note_count": note_count,
             "chord_count": chord_count,
             "voice_count": voice_count,

@@ -21,6 +21,7 @@ class ArtifactType(PyEnum):
     MUSICXML = "musicxml"
     MIDI = "midi"
     SVG = "svg"
+    PNG = "png"
 
 
 class Artifact(Base):

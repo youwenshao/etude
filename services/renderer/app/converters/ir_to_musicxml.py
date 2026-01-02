@@ -40,19 +40,44 @@ class IRToMusicXMLConverter:
 
         Returns:
             MusicXML as string
+            
+        Raises:
+            ValueError: If required fields are missing or invalid
         """
-        logger.info("Converting IR v2 to MusicXML")
-        logger.info(f"Notes: {len(ir_v2['notes'])}, Staves: {len(ir_v2['staves'])}")
+        try:
+            logger.info("Converting IR v2 to MusicXML")
+            
+            # Validate required fields
+            if "notes" not in ir_v2:
+                raise ValueError("IR v2 missing required field 'notes'")
+            if "staves" not in ir_v2:
+                raise ValueError("IR v2 missing required field 'staves'")
+            if not isinstance(ir_v2["notes"], list):
+                raise ValueError(f"IR v2 'notes' must be a list, got {type(ir_v2['notes'])}")
+            if not isinstance(ir_v2["staves"], list):
+                raise ValueError(f"IR v2 'staves' must be a list, got {type(ir_v2['staves'])}")
+            if len(ir_v2["staves"]) == 0:
+                raise ValueError("IR v2 must have at least one staff")
+            
+            logger.info(f"Notes: {len(ir_v2['notes'])}, Staves: {len(ir_v2['staves'])}")
 
-        # Build MusicXML structure
-        root = self._create_root()
+            # Build MusicXML structure
+            root = self._create_root()
 
-        # Add metadata
-        self._add_metadata(root, ir_v2["metadata"])
+            # Add metadata (handle missing metadata gracefully)
+            metadata = ir_v2.get("metadata", {})
+            if not isinstance(metadata, dict):
+                logger.warning(f"IR v2 'metadata' is not a dict, got {type(metadata)}, using empty dict")
+                metadata = {}
+            self._add_metadata(root, metadata)
 
-        # Add part list
-        part_list = self._create_part_list(ir_v2["staves"])
-        root.append(part_list)
+            # Add part list
+            part_list = self._create_part_list(ir_v2["staves"])
+            root.append(part_list)
+        except KeyError as e:
+            raise ValueError(f"Missing required field in IR v2: {str(e)}") from e
+        except (TypeError, AttributeError) as e:
+            raise ValueError(f"Invalid data type in IR v2: {str(e)}") from e
 
         # Add parts (one per staff or combined for piano)
         if self._is_piano_score(ir_v2["staves"]):
@@ -193,8 +218,26 @@ class IRToMusicXMLConverter:
             attributes = self._create_attributes(ir_v2, is_grand_staff)
             measure.append(attributes)
 
-        # Sort notes by onset time
-        sorted_notes = sorted(notes, key=lambda n: n["time"]["onset_seconds"])
+        # Sort notes by onset time - validate time structure first
+        for i, n in enumerate(notes):
+            if "time" not in n:
+                raise ValueError(f"Note {i} in measure {measure_num} missing required field 'time'")
+            time_data = n["time"]
+            if not isinstance(time_data, dict):
+                raise ValueError(f"Note {i} in measure {measure_num} 'time' must be a dict, got {type(time_data)}")
+            if "onset_seconds" not in time_data and "absolute_beat" not in time_data:
+                raise ValueError(f"Note {i} in measure {measure_num} 'time' missing 'onset_seconds' or 'absolute_beat'")
+        
+        # Use onset_seconds if available, otherwise fall back to absolute_beat
+        def get_onset(note):
+            time_data = note["time"]
+            if "onset_seconds" in time_data:
+                return time_data["onset_seconds"]
+            elif "absolute_beat" in time_data:
+                return time_data["absolute_beat"]
+            return 0.0
+        
+        sorted_notes = sorted(notes, key=get_onset)
 
         # Add notes
         for note_data in sorted_notes:
@@ -213,19 +256,39 @@ class IRToMusicXMLConverter:
         divisions = ET.SubElement(attributes, "divisions")
         divisions.text = "256"  # 256 divisions per quarter note
 
-        # Key signature
+        # Key signature - validate before accessing
+        if "key_signature" not in ir_v2:
+            raise ValueError("IR v2 missing required field 'key_signature'")
+        key_sig = ir_v2["key_signature"]
+        if not isinstance(key_sig, dict):
+            raise ValueError(f"IR v2 'key_signature' must be a dict, got {type(key_sig)}")
+        if "fifths" not in key_sig:
+            raise ValueError("IR v2 'key_signature' missing required field 'fifths'")
+        if "mode" not in key_sig:
+            raise ValueError("IR v2 'key_signature' missing required field 'mode'")
+        
         key = ET.SubElement(attributes, "key")
         fifths = ET.SubElement(key, "fifths")
-        fifths.text = str(ir_v2["key_signature"]["fifths"])
+        fifths.text = str(key_sig["fifths"])
         mode = ET.SubElement(key, "mode")
-        mode.text = ir_v2["key_signature"]["mode"]
+        mode.text = str(key_sig["mode"])
 
-        # Time signature
+        # Time signature - validate before accessing
+        if "time_signature" not in ir_v2:
+            raise ValueError("IR v2 missing required field 'time_signature'")
+        time_sig = ir_v2["time_signature"]
+        if not isinstance(time_sig, dict):
+            raise ValueError(f"IR v2 'time_signature' must be a dict, got {type(time_sig)}")
+        if "numerator" not in time_sig:
+            raise ValueError("IR v2 'time_signature' missing required field 'numerator'")
+        if "denominator" not in time_sig:
+            raise ValueError("IR v2 'time_signature' missing required field 'denominator'")
+        
         time = ET.SubElement(attributes, "time")
         beats = ET.SubElement(time, "beats")
-        beats.text = str(ir_v2["time_signature"]["numerator"])
+        beats.text = str(time_sig["numerator"])
         beat_type = ET.SubElement(time, "beat-type")
-        beat_type.text = str(ir_v2["time_signature"]["denominator"])
+        beat_type.text = str(time_sig["denominator"])
 
         # Staves (for grand staff)
         if is_grand_staff:
@@ -252,15 +315,34 @@ class IRToMusicXMLConverter:
         """Create a note element with fingering."""
         note = ET.Element("note")
 
+        # Validate pitch structure
+        if "pitch" not in note_data:
+            raise ValueError(f"Note missing required field 'pitch'")
+        pitch_data = note_data["pitch"]
+        if not isinstance(pitch_data, dict):
+            raise ValueError(f"Note 'pitch' must be a dict, got {type(pitch_data)}")
+        if "pitch_class" not in pitch_data and "midi_note" not in pitch_data:
+            raise ValueError(f"Note 'pitch' missing 'pitch_class' or 'midi_note'")
+        if "octave" not in pitch_data:
+            raise ValueError(f"Note 'pitch' missing required field 'octave'")
+
         # Pitch
         pitch = ET.SubElement(note, "pitch")
         step = ET.SubElement(pitch, "step")
         # Extract step from pitch_class (remove accidentals)
-        pitch_class = note_data["pitch"]["pitch_class"]
+        pitch_class = pitch_data.get("pitch_class", "")
+        if not pitch_class:
+            # Fallback: derive from midi_note if available
+            if "midi_note" in pitch_data:
+                midi_note = pitch_data["midi_note"]
+                note_names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
+                pitch_class = note_names[midi_note % 12]
+            else:
+                raise ValueError(f"Note 'pitch' missing both 'pitch_class' and 'midi_note'")
         step.text = pitch_class[0].upper()  # First character is the step
 
         octave = ET.SubElement(pitch, "octave")
-        octave.text = str(note_data["pitch"]["octave"])
+        octave.text = str(pitch_data["octave"])
 
         # Accidental
         if "#" in pitch_class:
@@ -270,12 +352,21 @@ class IRToMusicXMLConverter:
             alter = ET.SubElement(pitch, "alter")
             alter.text = "-1"
 
+        # Validate duration structure
+        if "duration" not in note_data:
+            raise ValueError(f"Note missing required field 'duration'")
+        duration_data = note_data["duration"]
+        if not isinstance(duration_data, dict):
+            raise ValueError(f"Note 'duration' must be a dict, got {type(duration_data)}")
+        
         # Duration
         duration = ET.SubElement(note, "duration")
         # Convert beats to divisions (256 divisions per quarter)
-        duration_beats = note_data.get(
-            "quantized_duration_beats", note_data["duration"]["duration_beats"]
-        )
+        duration_beats = note_data.get("quantized_duration_beats")
+        if duration_beats is None:
+            if "duration_beats" not in duration_data:
+                raise ValueError(f"Note 'duration' missing 'duration_beats' or 'quantized_duration_beats'")
+            duration_beats = duration_data["duration_beats"]
         duration.text = str(int(duration_beats * 256))
 
         # Type

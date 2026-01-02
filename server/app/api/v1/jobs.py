@@ -51,7 +51,7 @@ async def create_job(
     )
 
     # Trigger background OMR processing
-    background_tasks.add_task(process_omr_job, job.id, db)
+    background_tasks.add_task(process_omr_job, job.id)
 
     return JobResponse.model_validate(job)
 

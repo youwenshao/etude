@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
 
-    # CORS
-    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8080"
+    # CORS - Allow common development ports (Flutter web uses various ports)
+    CORS_ORIGINS: str = "http://localhost:3000,http://localhost:8080,http://localhost:5000,http://localhost:5001,http://localhost:5002,http://localhost:5003,http://localhost:5004,http://localhost:5005"
     
     @property
     def cors_origins_list(self) -> List[str]:

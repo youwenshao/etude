@@ -88,7 +88,14 @@ class AuthRepository {
       }
       return 'Server error: ${e.response!.statusCode}';
     }
-    return 'Network error: ${e.message ?? 'Unknown error'}';
+    // Provide more detailed error messages for connection issues
+    if (e.type == DioExceptionType.connectionError) {
+      return 'Connection error: Unable to reach the server at ${ApiConfig.baseUrl}. Please ensure the backend is running.';
+    }
+    if (e.type == DioExceptionType.connectionTimeout) {
+      return 'Connection timeout: The server did not respond in time.';
+    }
+    return 'Network error: ${e.message ?? e.type.toString()}';
   }
 }
 

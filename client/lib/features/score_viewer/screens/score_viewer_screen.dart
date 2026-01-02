@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/score_viewer_provider.dart';
-import '../widgets/score_svg_viewer.dart';
+import '../widgets/score_png_viewer.dart';
 import '../widgets/confidence_legend.dart';
+import '../../playback/widgets/playback_bar.dart';
+import '../../playback/providers/playback_controller.dart';
+import '../../editor/providers/edit_mode_provider.dart';
 
-class ScoreViewerScreen extends ConsumerWidget {
+class ScoreViewerScreen extends ConsumerStatefulWidget {
   final String jobId;
   
   const ScoreViewerScreen({
@@ -13,13 +16,47 @@ class ScoreViewerScreen extends ConsumerWidget {
   });
   
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final scoreState = ref.watch(scoreViewerProvider(jobId));
+  ConsumerState<ScoreViewerScreen> createState() => _ScoreViewerScreenState();
+}
+
+class _ScoreViewerScreenState extends ConsumerState<ScoreViewerScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // Initialize playback controller when screen loads
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final controller = ref.read(playbackControllerProvider(widget.jobId).notifier);
+      controller.loadMidi(widget.jobId);
+    });
+  }
+  
+  // Note: Playback controller cleanup is handled by Riverpod's ref.onDispose
+  // No manual cleanup needed here
+  
+  @override
+  Widget build(BuildContext context) {
+    final scoreState = ref.watch(scoreViewerProvider(widget.jobId));
     
     return Scaffold(
       appBar: AppBar(
         title: const Text('Score with Fingering'),
         actions: [
+          // Edit mode toggle
+          Consumer(
+            builder: (context, ref, child) {
+              final isEditMode = ref.watch(editModeProvider);
+              return IconButton(
+                icon: Icon(
+                  isEditMode ? Icons.edit : Icons.edit_outlined,
+                  color: isEditMode ? Theme.of(context).colorScheme.primary : null,
+                ),
+                onPressed: () {
+                  ref.read(editModeProvider.notifier).state = !isEditMode;
+                },
+                tooltip: isEditMode ? 'Exit Edit Mode' : 'Edit Mode',
+              );
+            },
+          ),
           // Toggle fingering visibility
           IconButton(
             icon: Icon(
@@ -28,7 +65,7 @@ class ScoreViewerScreen extends ConsumerWidget {
                   : Icons.music_off,
             ),
             onPressed: () {
-              ref.read(scoreViewerProvider(jobId).notifier).toggleFingering();
+              ref.read(scoreViewerProvider(widget.jobId).notifier).toggleFingering();
             },
             tooltip: 'Toggle Fingering',
           ),
@@ -41,7 +78,7 @@ class ScoreViewerScreen extends ConsumerWidget {
                   : Icons.visibility_off,
             ),
             onPressed: () {
-              ref.read(scoreViewerProvider(jobId).notifier).toggleConfidence();
+              ref.read(scoreViewerProvider(widget.jobId).notifier).toggleConfidence();
             },
             tooltip: 'Toggle Confidence',
           ),
@@ -50,7 +87,7 @@ class ScoreViewerScreen extends ConsumerWidget {
           PopupMenuButton<String>(
             icon: const Icon(Icons.zoom_in),
             onSelected: (value) {
-              final notifier = ref.read(scoreViewerProvider(jobId).notifier);
+              final notifier = ref.read(scoreViewerProvider(widget.jobId).notifier);
               switch (value) {
                 case 'zoom_in':
                   notifier.zoomIn();
@@ -124,7 +161,7 @@ class ScoreViewerScreen extends ConsumerWidget {
                     ],
                   ),
                 )
-              : scoreState.svgPages.isEmpty
+              : scoreState.pngPages.isEmpty
                   ? const Center(child: Text('No score available'))
                   : Row(
                       children: [
@@ -134,13 +171,14 @@ class ScoreViewerScreen extends ConsumerWidget {
                             children: [
                               // Score display
                               Expanded(
-                                child: ScoreSvgViewer(
-                                  svgContent: scoreState.svgPages[scoreState.currentPage],
+                                child: ScorePngViewer(
+                                  pngBase64: scoreState.pngPages[scoreState.currentPage],
                                   zoom: scoreState.zoom,
                                   irV2Data: scoreState.irV2Data,
                                   pageNumber: scoreState.currentPage,
                                   showFingering: scoreState.showFingering,
                                   showConfidence: scoreState.showConfidence,
+                                  jobId: widget.jobId,
                                 ),
                               ),
                               
@@ -165,9 +203,10 @@ class ScoreViewerScreen extends ConsumerWidget {
                                         icon: const Icon(Icons.chevron_left),
                                         onPressed: scoreState.currentPage > 0
                                             ? () {
-                                                ref
-                                                    .read(scoreViewerProvider(jobId).notifier)
-                                                    .previousPage();
+                                                final notifier = ref.read(scoreViewerProvider(widget.jobId).notifier);
+                                                // Pause playback when changing pages
+                                                ref.read(playbackControllerProvider(widget.jobId).notifier).pause();
+                                                notifier.previousPage();
                                               }
                                             : null,
                                       ),
@@ -181,9 +220,10 @@ class ScoreViewerScreen extends ConsumerWidget {
                                         icon: const Icon(Icons.chevron_right),
                                         onPressed: scoreState.currentPage < scoreState.totalPages - 1
                                             ? () {
-                                                ref
-                                                    .read(scoreViewerProvider(jobId).notifier)
-                                                    .nextPage();
+                                                final notifier = ref.read(scoreViewerProvider(widget.jobId).notifier);
+                                                // Pause playback when changing pages
+                                                ref.read(playbackControllerProvider(widget.jobId).notifier).pause();
+                                                notifier.nextPage();
                                               }
                                             : null,
                                       ),
@@ -258,6 +298,7 @@ class ScoreViewerScreen extends ConsumerWidget {
                           ),
                       ],
                     ),
+      bottomNavigationBar: PlaybackBar(jobId: widget.jobId),
     );
   }
   

@@ -61,17 +61,17 @@ class Settings(BaseSettings):
 
     def get_tromr_config_path(self) -> Path:
         """Get absolute path to TrOMR config file."""
-        base = Path(__file__).parent.parent.parent
+        base = Path(__file__).parent.parent
         return base / self.tromr_config_path
 
     def get_tromr_checkpoint_path(self) -> Path:
         """Get absolute path to TrOMR checkpoint file."""
-        base = Path(__file__).parent.parent.parent
+        base = Path(__file__).parent.parent
         return base / self.tromr_checkpoint_path
 
     def get_tromr_base_path(self) -> Path:
         """Get absolute path to TrOMR base directory."""
-        base = Path(__file__).parent.parent.parent
+        base = Path(__file__).parent.parent
         return base / self.tromr_base_path
 
     class Config:

@@ -10,8 +10,13 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /app
 
 # Copy requirements and install
+# Install torch first, then torch-scatter and torch-sparse (which need torch at build time)
+# Then install the rest of the requirements (pip will skip already-installed packages)
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir torch==2.1.0 numpy==1.24.3 && \
+    pip install --no-cache-dir --no-build-isolation torch-scatter==2.1.2 torch-sparse==0.6.18 && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy application code
 COPY app/ ./app/

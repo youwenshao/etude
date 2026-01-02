@@ -31,32 +31,57 @@ class IRToMIDIConverter:
 
         Returns:
             MIDI file as bytes
+            
+        Raises:
+            ValueError: If required fields are missing or invalid
         """
-        logger.info("Converting IR v2 to MIDI")
+        try:
+            logger.info("Converting IR v2 to MIDI")
 
-        # Create MIDI file
-        mid = mido.MidiFile(ticks_per_beat=self.ticks_per_beat)
+            # Validate required fields
+            if "notes" not in ir_v2:
+                raise ValueError("IR v2 missing required field 'notes'")
+            if not isinstance(ir_v2["notes"], list):
+                raise ValueError(f"IR v2 'notes' must be a list, got {type(ir_v2['notes'])}")
+            if "time_signature" not in ir_v2:
+                raise ValueError("IR v2 missing required field 'time_signature'")
+            time_sig = ir_v2["time_signature"]
+            if not isinstance(time_sig, dict):
+                raise ValueError(f"IR v2 'time_signature' must be a dict, got {type(time_sig)}")
+            if "numerator" not in time_sig or "denominator" not in time_sig:
+                raise ValueError("IR v2 'time_signature' missing 'numerator' or 'denominator'")
 
-        # Create track
-        track = mido.MidiTrack()
-        mid.tracks.append(track)
+            # Create MIDI file
+            mid = mido.MidiFile(ticks_per_beat=self.ticks_per_beat)
 
-        # Add tempo
-        tempo_bpm = ir_v2.get("tempo", {}).get("bpm", self.tempo)
-        track.append(mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(tempo_bpm)))
+            # Create track
+            track = mido.MidiTrack()
+            mid.tracks.append(track)
 
-        # Add time signature
-        ts = ir_v2["time_signature"]
-        track.append(
-            mido.MetaMessage(
-                "time_signature",
-                numerator=ts["numerator"],
-                denominator=ts["denominator"],
+            # Add tempo - handle missing tempo gracefully
+            tempo_data = ir_v2.get("tempo", {})
+            if not isinstance(tempo_data, dict):
+                logger.warning(f"IR v2 'tempo' is not a dict, got {type(tempo_data)}, using default tempo")
+                tempo_bpm = self.tempo
+            else:
+                tempo_bpm = tempo_data.get("bpm", self.tempo)
+            track.append(mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(tempo_bpm)))
+
+            # Add time signature
+            track.append(
+                mido.MetaMessage(
+                    "time_signature",
+                    numerator=time_sig["numerator"],
+                    denominator=time_sig["denominator"],
+                )
             )
-        )
 
-        # Convert notes to MIDI events
-        midi_events = self._notes_to_midi_events(ir_v2["notes"])
+            # Convert notes to MIDI events
+            midi_events = self._notes_to_midi_events(ir_v2["notes"])
+        except KeyError as e:
+            raise ValueError(f"Missing required field in IR v2: {str(e)}") from e
+        except (TypeError, AttributeError) as e:
+            raise ValueError(f"Invalid data type in IR v2: {str(e)}") from e
 
         # Sort by time
         midi_events.sort(key=lambda x: x["time"])
@@ -106,17 +131,55 @@ class IRToMIDIConverter:
 
         Returns:
             List of MIDI events with time, type, note, velocity
+            
+        Raises:
+            ValueError: If note structure is invalid
         """
         events = []
 
-        for note in notes:
-            # Get timing information
-            onset_beats = note["time"]["absolute_beat"]
-            duration_beats = note["duration"]["duration_beats"]
-            offset_beats = onset_beats + duration_beats
+        for i, note in enumerate(notes):
+            try:
+                # Validate note structure
+                if not isinstance(note, dict):
+                    raise ValueError(f"Note {i} must be a dictionary, got {type(note)}")
+                
+                # Get timing information - validate structure
+                if "time" not in note:
+                    raise ValueError(f"Note {i} missing required field 'time'")
+                time_data = note["time"]
+                if not isinstance(time_data, dict):
+                    raise ValueError(f"Note {i} 'time' must be a dict, got {type(time_data)}")
+                if "absolute_beat" not in time_data:
+                    raise ValueError(f"Note {i} 'time' missing required field 'absolute_beat'")
+                
+                if "duration" not in note:
+                    raise ValueError(f"Note {i} missing required field 'duration'")
+                duration_data = note["duration"]
+                if not isinstance(duration_data, dict):
+                    raise ValueError(f"Note {i} 'duration' must be a dict, got {type(duration_data)}")
+                if "duration_beats" not in duration_data:
+                    raise ValueError(f"Note {i} 'duration' missing required field 'duration_beats'")
+                
+                onset_beats = time_data["absolute_beat"]
+                duration_beats = duration_data["duration_beats"]
+                offset_beats = onset_beats + duration_beats
 
-            # Get pitch
-            midi_note = note["pitch"]["midi_note"]
+                # Get pitch - validate structure
+                if "pitch" not in note:
+                    raise ValueError(f"Note {i} missing required field 'pitch'")
+                pitch_data = note["pitch"]
+                if not isinstance(pitch_data, dict):
+                    raise ValueError(f"Note {i} 'pitch' must be a dict, got {type(pitch_data)}")
+                if "midi_note" not in pitch_data:
+                    raise ValueError(f"Note {i} 'pitch' missing required field 'midi_note'")
+                
+                midi_note = pitch_data["midi_note"]
+                
+                # Validate midi_note range
+                if not isinstance(midi_note, int) or midi_note < 0 or midi_note > 127:
+                    raise ValueError(f"Note {i} 'pitch.midi_note' must be an integer between 0-127, got {midi_note}")
+            except (KeyError, TypeError) as e:
+                raise ValueError(f"Note {i} has invalid structure: {str(e)}") from e
 
             # Get velocity (default to 64 for mf)
             velocity = 64

@@ -15,9 +15,11 @@ lxml==4.9.3
 # Verovio for SVG rendering
 verovio==4.1.0
 
+# CairoSVG for PNG generation (SVG to PNG conversion)
+cairosvg>=2.7.0
+
 # Testing dependencies
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 pytest-mock>=3.11.0
 pytest-cov>=4.1.0
-

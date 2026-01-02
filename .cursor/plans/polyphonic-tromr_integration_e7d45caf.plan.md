@@ -350,4 +350,3 @@ The Polyphonic-TrOMR repository will be cloned into `services/omr/Polyphonic-TrO
 
 - The actual Polyphonic-TrOMR import path and API will be determined from the cloned repository code
 - The model output format will be inferred from `tromr/inference.py` and adapter adjusted accordingly
-- MPS device support is prioritized for Apple Silicon, with CPU fallback

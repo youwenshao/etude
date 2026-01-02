@@ -86,14 +86,23 @@ async def process_fingering_async(
             # Update job status
             await job_service.update_job_status(job_id, JobStatus.FINGERING_COMPLETED)
 
-            # Trigger rendering task
-            from app.tasks.rendering_tasks import process_rendering_task
+            # Process rendering directly to ensure job completion
+            # This ensures the pipeline continues even if Celery workers aren't running
+            logger.info(f"Processing rendering directly for job {job_id}")
+            try:
+                from app.tasks.rendering_tasks import process_rendering_async
 
-            process_rendering_task.delay(
-                job_id=str(job_id), ir_v2_artifact_id=str(ir_v2_artifact.id)
-            )
-
-            logger.info("Triggered rendering task")
+                await process_rendering_async(job_id, ir_v2_artifact.id)
+                logger.info(f"Completed rendering processing directly for job {job_id}")
+            except Exception as direct_error:
+                logger.error(
+                    f"Direct rendering processing failed for job {job_id}: {direct_error}",
+                    exc_info=True,
+                )
+                # Update job status to indicate rendering failed
+                await job_service.update_job_status(
+                    job_id, JobStatus.FAILED, error_message=f"Failed to process rendering: {str(direct_error)}"
+                )
 
             return {
                 "success": True,

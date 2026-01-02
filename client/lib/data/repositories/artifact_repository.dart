@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/artifact.dart';
@@ -26,7 +26,25 @@ class ArtifactRepository {
         savePath,
       );
     } on DioException catch (e) {
-      throw _handleError(e);
+      throw Exception(_handleError(e));
+    }
+  }
+  
+  Future<Uint8List> downloadArtifactAsBytes(String artifactId) async {
+    try {
+      final response = await _dio.get<Uint8List>(
+        ApiConfig.artifactDownload(artifactId),
+        options: Options(
+          responseType: ResponseType.bytes,
+        ),
+      );
+      final data = response.data;
+      if (data == null || data.isEmpty) {
+        throw Exception('Downloaded artifact is empty');
+      }
+      return data;
+    } on DioException catch (e) {
+      throw Exception(_handleError(e));
     }
   }
   

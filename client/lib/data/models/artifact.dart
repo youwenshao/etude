@@ -15,6 +15,8 @@ enum ArtifactType {
   midi,
   @JsonValue('svg')
   svg,
+  @JsonValue('png')
+  png,
 }
 
 @JsonSerializable()
@@ -56,10 +58,17 @@ class Artifact {
   Map<String, dynamic> toJson() => _$ArtifactToJson(this);
   
   ArtifactType get typeEnum {
-    return ArtifactType.values.firstWhere(
-      (e) => e.name.toLowerCase().replaceAll('v', '_v') == artifactType.toLowerCase(),
-      orElse: () => ArtifactType.pdf,
-    );
+    // Map backend snake_case to Dart enum names
+    final typeMapping = {
+      'pdf': ArtifactType.pdf,
+      'ir_v1': ArtifactType.irV1,
+      'ir_v2': ArtifactType.irV2,
+      'musicxml': ArtifactType.musicxml,
+      'midi': ArtifactType.midi,
+      'svg': ArtifactType.svg,
+      'png': ArtifactType.png,
+    };
+    return typeMapping[artifactType.toLowerCase()] ?? ArtifactType.pdf;
   }
 }
 

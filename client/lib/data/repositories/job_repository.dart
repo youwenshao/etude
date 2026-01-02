@@ -1,5 +1,6 @@
-import 'dart:io';
 import 'package:dio/dio.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/job.dart';
 import '../models/artifact.dart';
@@ -11,15 +12,25 @@ class JobRepository {
   
   JobRepository(this._dio);
   
-  Future<Job> uploadPDF(File pdfFile, {
+  Future<Job> uploadPDF(PlatformFile pdfFile, {
     required Function(double progress) onProgress,
   }) async {
     try {
+      MultipartFile file;
+      if (kIsWeb) {
+        file = MultipartFile.fromBytes(
+          pdfFile.bytes!,
+          filename: pdfFile.name,
+        );
+      } else {
+        file = await MultipartFile.fromFile(
+          pdfFile.path!,
+          filename: pdfFile.name,
+        );
+      }
+
       final formData = FormData.fromMap({
-        'file': await MultipartFile.fromFile(
-          pdfFile.path,
-          filename: pdfFile.path.split('/').last,
-        ),
+        'file': file,
       });
       
       final response = await _dio.post(
@@ -99,6 +110,37 @@ class JobRepository {
   Future<void> deleteJob(String jobId) async {
     try {
       await _dio.delete(ApiConfig.jobDetail(jobId));
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  Future<void> updateFingering(
+    String jobId,
+    String noteId,
+    int finger,
+    String hand,
+  ) async {
+    try {
+      // Note: This endpoint needs to be created on the backend
+      // PATCH /api/v1/jobs/{job_id}/fingering/{note_id}
+      await _dio.patch(
+        '${ApiConfig.jobDetail(jobId)}/fingering/$noteId',
+        data: {
+          'finger': finger,
+          'hand': hand,
+        },
+      );
+    } on DioException catch (e) {
+      throw _handleError(e);
+    }
+  }
+  
+  Future<void> reprocessJob(String jobId) async {
+    try {
+      // Note: This endpoint needs to be created on the backend
+      // POST /api/v1/jobs/{job_id}/reprocess
+      await _dio.post('${ApiConfig.jobDetail(jobId)}/reprocess');
     } on DioException catch (e) {
       throw _handleError(e);
     }

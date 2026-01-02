@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Score Viewer</title>
+    <script src="js/opensheetmusicdisplay.min.js"></script>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* We'll handle scrolling in the container */
+        }
+        #osmd-container {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        /* Hide scrollbars but keep functionality */
+        #osmd-container::-webkit-scrollbar {
+            width: 0px;
+            background: transparent;
+        }
+    </style>
+</head>
+<body>
+    <div id="osmd-container"></div>
+
+    <script>
+        let osmd = null;
+        let currentXml = null;
+
+        // Initialize OSMD
+        function initOSMD() {
+            if (osmd) return;
+            
+            osmd = new opensheetmusicdisplay.OpenSheetMusicDisplay("osmd-container", {
+                autoResize: true,
+                backend: "svg",
+                drawingParameters: "compacttight", // or "compact", "default"
+                drawTitle: false,
+                drawSubtitle: false,
+                drawComposer: false,
+                drawLyricist: false,
+                drawCredits: false,
+                renderFingerings: true,
+                fingeringPosition: "auto", // "left", "right", "above", "below", "auto"
+                setWantedStemDirectionByXml: true, // Important for preserving editorial intent
+                
+                // Interaction
+                followCursor: true,
+            });
+
+            console.log("OSMD Initialized");
+        }
+
+        // Load MusicXML content
+        async function loadScore(xmlContent) {
+            try {
+                if (!osmd) initOSMD();
+                
+                currentXml = xmlContent;
+                await osmd.load(xmlContent);
+                await osmd.render();
+                
+                // Setup click listeners
+                setupInteraction();
+                
+                // Notify Flutter
+                sendMessage('onLoadComplete', {});
+            } catch (e) {
+                console.error("Error loading score:", e);
+                sendMessage('onError', { message: e.toString() });
+            }
+        }
+
+        // Toggle fingerings
+        function setFingerings(enabled) {
+            if (!osmd) return;
+            
+            osmd.EngravingRules.RenderFingerings = enabled;
+            // We need to re-render to apply changes
+            try {
+                osmd.render();
+            } catch (e) {
+                console.error("Error re-rendering fingerings:", e);
+            }
+        }
+
+        // Set zoom level
+        function setZoom(zoom) {
+            if (!osmd) return;
+            osmd.Zoom = zoom;
+            osmd.render();
+        }
+
+        // Setup interaction (click listeners)
+        function setupInteraction() {
+            if (!osmd || !osmd.GraphicSheet || !osmd.GraphicSheet.MeasureList) return;
+
+            // This is a simplified approach. OSMD provides a Cursor, but direct note clicking 
+            // requires finding the graphical object under the mouse/tap.
+            // For now, we'll implement a basic tap-to-select if needed later.
+            // But we can expose a method to get cursor position.
+        }
+
+        // Communication with Flutter
+        function sendMessage(type, data) {
+            const message = JSON.stringify({ type: type, data: data });
+            
+            // For webview_flutter (Mobile)
+            if (window.ScoreViewerChannel) {
+                window.ScoreViewerChannel.postMessage(message);
+            } 
+            
+            // For HtmlElementView (Web)
+            window.parent.postMessage(message, '*');
+            
+            console.log("Message sent:", message);
+        }
+
+        // Initial setup
+        window.onload = function() {
+            initOSMD();
+            sendMessage('onReady', {});
+        };
+
+        // Web compatibility: handle messages via postMessage
+        window.addEventListener('message', function(event) {
+            if (typeof event.data === 'string') {
+                try {
+                    // Try to execute the incoming string as a command
+                    // In a production app, you'd want a more secure way to route commands
+                    eval(event.data);
+                } catch (e) {
+                    console.error("Error executing command from parent:", e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
+

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../../../data/models/job.dart';
 import '../../../core/theme/colors.dart';
 
 class JobStatusIndicator extends StatelessWidget {

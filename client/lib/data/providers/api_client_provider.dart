@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:logger/logger.dart';
@@ -13,7 +14,17 @@ final apiClientProvider = Provider<Dio>((ref) {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
     },
+    // For web, ensure proper CORS handling
+    validateStatus: (status) => status != null && status < 500,
   ));
+  
+  // Configure for web if needed
+  if (kIsWeb) {
+    // Dio for web uses browser's XMLHttpRequest
+    // Ensure proper headers are sent
+    dio.options.headers['Content-Type'] = 'application/json';
+    dio.options.headers['Accept'] = 'application/json';
+  }
   
   // Add logging interceptor
   dio.interceptors.add(LogInterceptor(

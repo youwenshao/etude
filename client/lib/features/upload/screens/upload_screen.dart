@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:file_picker/file_picker.dart';
@@ -14,24 +13,25 @@ class UploadScreen extends ConsumerStatefulWidget {
 }
 
 class _UploadScreenState extends ConsumerState<UploadScreen> {
-  File? _selectedFile;
+  PlatformFile? _selectedFile;
   
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
       allowedExtensions: AppConfig.allowedFileExtensions,
       allowMultiple: false,
+      withData: true, // Ensure we get bytes on web
     );
     
-    if (result != null && result.files.single.path != null) {
-      final file = File(result.files.single.path!);
+    if (result != null && result.files.isNotEmpty) {
+      final file = result.files.first;
       
       // Validate file size
-      final fileSize = await file.length();
+      final fileSize = file.size;
       if (fileSize > AppConfig.maxFileSizeBytes) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
+            const SnackBar(
               content: Text(
                 'File size exceeds ${AppConfig.maxFileSizeMB}MB limit',
               ),
@@ -144,7 +144,7 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
                         ),
                         const SizedBox(height: 16),
                         Text(
-                          _selectedFile!.path.split('/').last,
+                          _selectedFile!.name,
                           style: Theme.of(context).textTheme.titleMedium,
                           textAlign: TextAlign.center,
                         ),
@@ -179,13 +179,25 @@ class _UploadScreenState extends ConsumerState<UploadScreen> {
                       const CircularProgressIndicator(),
                       const SizedBox(height: 24),
                       Text(
-                        'Uploading... ${(uploadState.progress * 100).toInt()}%',
+                        uploadState.statusMessage.isNotEmpty 
+                            ? uploadState.statusMessage 
+                            : 'Uploading...',
                         style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        '${(uploadState.progress * 100).toInt()}%',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Colors.grey[600],
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 16),
                       LinearProgressIndicator(
                         value: uploadState.progress,
                         backgroundColor: Colors.grey[200],
+                        minHeight: 8,
+                        borderRadius: BorderRadius.circular(4),
                       ),
                     ],
                   ),

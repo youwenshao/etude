@@ -203,7 +203,7 @@ class OMRModel:
 
             # Run model inference
             with torch.no_grad():
-                imgs = img_tensor.unsqueeze(0).float().unsqueeze(1).to(self.device)
+                imgs = img_tensor.unsqueeze(0).float().to(self.device)
                 output = self.staff_to_score.model.generate(
                     imgs, temperature=self.temperature
                 )

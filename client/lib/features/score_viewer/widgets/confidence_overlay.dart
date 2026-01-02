@@ -1,70 +1,83 @@
 import 'package:flutter/material.dart';
+import 'score_coordinate_bridge.dart';
 
 class ConfidenceOverlay extends StatelessWidget {
   final Map<String, dynamic> irV2Data;
   final int pageNumber;
   final double zoom;
   final TransformationController transformationController;
-  
+  final ScoreCoordinateBridge? coordinateBridge;
+
   const ConfidenceOverlay({
     super.key,
     required this.irV2Data,
     required this.pageNumber,
     required this.zoom,
     required this.transformationController,
+    this.coordinateBridge,
   });
-  
+
   List<Map<String, dynamic>> _getNotesForPage() {
     final notes = irV2Data['notes'] as List<dynamic>? ?? [];
-    
-    return notes
-        .cast<Map<String, dynamic>>()
-        .where((note) {
-          final spatial = note['spatial'] as Map<String, dynamic>?;
-          if (spatial == null) return false;
-          final pageNum = spatial['page_number'] as int? ?? 1;
-          return pageNum == pageNumber + 1;
-        })
-        .toList();
+
+    return notes.cast<Map<String, dynamic>>().where((note) {
+      final spatial = note['spatial'] as Map<String, dynamic>?;
+      if (spatial == null) return false;
+      final pageNum = spatial['page_number'] as int? ?? 1;
+      return pageNum == pageNumber + 1;
+    }).toList();
   }
-  
+
   List<Map<String, dynamic>> _getLowConfidenceRegions() {
     final metadata = irV2Data['metadata'] as Map<String, dynamic>?;
     if (metadata == null) return [];
-    
+
     final regions = metadata['low_confidence_regions'] as List<dynamic>? ?? [];
     return regions.cast<Map<String, dynamic>>();
   }
-  
-  Widget _buildConfidenceHighlight(Map<String, dynamic> note) {
-    final fingering = note['fingering'] as Map<String, dynamic>?;
-    if (fingering == null) return const SizedBox.shrink();
-    
-    final confidence = fingering['confidence'] as double? ?? 1.0;
-    
-    // Only highlight low confidence notes
-    if (confidence >= 0.6) return const SizedBox.shrink();
-    
+
+  /// Get note position using coordinate bridge or fallback to IR bounding box
+  Rect _getNoteRect(Map<String, dynamic> note) {
+    if (coordinateBridge != null) {
+      return coordinateBridge!.getConfidenceHighlightRect(note);
+    }
+
+    // Fallback to IR bounding box
     final spatial = note['spatial'] as Map<String, dynamic>?;
-    if (spatial == null) return const SizedBox.shrink();
-    
+    if (spatial == null) return Rect.zero;
+
     final bbox = spatial['bounding_box'] as Map<String, dynamic>?;
-    if (bbox == null) return const SizedBox.shrink();
-    
+    if (bbox == null) return Rect.zero;
+
     final x = (bbox['x'] as num?)?.toDouble() ?? 0.0;
     final y = (bbox['y'] as num?)?.toDouble() ?? 0.0;
     final width = (bbox['width'] as num?)?.toDouble() ?? 20.0;
     final height = (bbox['height'] as num?)?.toDouble() ?? 20.0;
-    
+
+    return Rect.fromLTWH(x - 5, y - 5, width + 10, height + 10);
+  }
+
+  Widget _buildConfidenceHighlight(Map<String, dynamic> note) {
+    final fingering = note['fingering'] as Map<String, dynamic>?;
+    if (fingering == null) return const SizedBox.shrink();
+
+    final confidence = fingering['confidence'] as double? ?? 1.0;
+
+    // Only highlight low confidence notes
+    if (confidence >= 0.6) return const SizedBox.shrink();
+
+    final rect = _getNoteRect(note);
+    if (rect == Rect.zero) return const SizedBox.shrink();
+
     // Color intensity based on confidence
     final opacity = (1.0 - confidence) * 0.5; // Lower confidence = more visible
-    
+
     return Positioned(
-      left: (x - 5) * zoom,
-      top: (y - 5) * zoom,
+      left: rect.left * zoom,
+      top: rect.top * zoom,
       child: Container(
-        width: (width + 10) * zoom,
-        height: (height + 10) * zoom,
+        width: rect.width * zoom,
+        height: rect.height * zoom,
         decoration: BoxDecoration(
           color: Colors.red.withOpacity(opacity),
           borderRadius: BorderRadius.circular(4),
@@ -76,17 +89,17 @@ class ConfidenceOverlay extends StatelessWidget {
       ),
     );
   }
-  
+
   Widget _buildRegionHighlight(Map<String, dynamic> region) {
     final startMeasure = region['start_measure'] as int?;
     final endMeasure = region['end_measure'] as int?;
     final avgConfidence = region['average_confidence'] as double?;
     final reason = region['reason'] as String?;
-    
+
     if (startMeasure == null || avgConfidence == null) {
       return const SizedBox.shrink();
     }
-    
+
     // For simplicity, we'll show a banner at the top
     // In production, you'd calculate exact measure positions
     return Container(
@@ -117,17 +130,17 @@ class ConfidenceOverlay extends StatelessWidget {
       ),
     );
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final notes = _getNotesForPage();
     final regions = _getLowConfidenceRegions();
-    
+
     return Stack(
       children: [
         // Note-level confidence highlights
         ...notes.map((note) => _buildConfidenceHighlight(note)),
-        
+
         // Region-level warnings
         if (regions.isNotEmpty)
           Positioned(
@@ -136,11 +149,12 @@ class ConfidenceOverlay extends StatelessWidget {
             right: 0,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: regions.map((region) => _buildRegionHighlight(region)).toList(),
+              children: regions
+                  .map((region) => _buildRegionHighlight(region))
+                  .toList(),
             ),
           ),
       ],
     );
   }
 }
-

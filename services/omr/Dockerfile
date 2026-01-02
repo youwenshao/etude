@@ -2,7 +2,13 @@ FROM python:3.11-slim
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    build-essential \
+    gcc \
+    g++ \
+    make \
+    pkg-config \
+    libssl-dev \
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
@@ -12,6 +18,13 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Install Rust using rustup (use older version compatible with tokenizers for transformers 4.20.1)
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y && \
+    export PATH="$HOME/.cargo/bin:$PATH" && \
+    rustup toolchain install 1.70.0 && \
+    rustup default 1.70.0 && \
+    rustup --version && cargo --version
+
 # Optional: CUDA support for GPU inference
 # FROM nvidia/cuda:11.8.0-cudnn8-runtime-ubuntu22.04
 # ... additional CUDA setup if needed
@@ -20,13 +33,17 @@ WORKDIR /app
 
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+ENV PATH="/root/.cargo/bin:${PATH}"
+# Allow unsafe reference casting for tokenizers (needed for transformers 4.20.1)
+ENV RUSTFLAGS="-A invalid_reference_casting"
+RUN pip install --upgrade pip && \
+    pip install --no-cache-dir -r requirements.txt
 
 # Copy Polyphonic-TrOMR repository
 COPY Polyphonic-TrOMR/ ./Polyphonic-TrOMR/
 
-# Set PYTHONPATH to include Polyphonic-TrOMR
-ENV PYTHONPATH=/app/Polyphonic-TrOMR:$PYTHONPATH
+# Set PYTHONPATH to include Polyphonic-TrOMR and its tromr subdirectory
+ENV PYTHONPATH=/app/Polyphonic-TrOMR:/app/Polyphonic-TrOMR/tromr:$PYTHONPATH
 
 # Copy application code
 COPY app/ ./app/
